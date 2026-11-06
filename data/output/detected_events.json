@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "total_events": 1,
+  "events": [
+    {
+      "id": "EV-01",
+      "event_type": "CROSSWALK_RIDING",
+      "start_ts": 6.97,
+      "end_ts": 7.47,
+      "track_id": 

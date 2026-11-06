@@ -1,0 +1,37 @@
+# Python Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# IDE / Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Large Video Files (>100MB, exceeds GitHub limits)
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Large Weights / Models
+models/*.pt
+*.pt
+*.pth
+*.onnx
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# OS generated files
+.DS_Store
+Thumbs.db

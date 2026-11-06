@@ -1,0 +1,28 @@
+{
+  "dataset": "CCTV-Moto-Safety-20Events",
+  "version": "1.0",
+  "camera": "cam_01",
+  "events": [
+    {"id": "GT-01", "event_type": "WRONG_WAY", "start_ts": 2.0, "end_ts": 5.5, "track_id": 10},
+    {"id": "GT-02", "event_type": "WRONG_WAY", "start_ts": 8.0, "end_ts": 11.2, "track_id": 14},
+    {"id": "GT-03", "event_type": "WRONG_WAY", "start_ts": 14.2, "end_ts": 17.8, "track_id": 19},
+    {"id": "GT-04", "event_type": "WRONG_WAY", "start_ts": 22.0, "end_ts": 25.4, "track_id": 23},
+    {"id": "GT-05", "event_type": "CROSSWALK_RIDING", "start_ts": 29.0, "end_ts": 32.1, "track_id": 27},
+    {"id": "GT-06", "event_type": "CROSSWALK_RIDING", "start_ts": 34.5, "end_ts": 37.0, "track_id": 29},
+    {"id": "GT-07", "event_type": "CROSSWALK_RIDING", "start_ts": 39.0, "end_ts": 42.2, "track_id": 31},
+    {"id": "GT-08", "event_type": "CROSSWALK_RIDING", "start_ts": 43.1, "end_ts": 45.8, "track_id": 33},
+    {"id": "GT-09", "event_type": "EXEMPT_WALKING", "start_ts": 45.5, "end_ts": 51.0, "track_id": 34},
+    {"id": "GT-10", "event_type": "EXEMPT_WALKING", "start_ts": 53.0, "end_ts": 58.2, "track_id": 37},
+    {"id": "GT-11", "event_type": "EXEMPT_WALKING", "start_ts": 60.1, "end_ts": 64.9, "track_id": 39},
+    {"id": "GT-12", "event_type": "INSUFFICIENT_EVIDENCE", "start_ts": 67.0, "end_ts": 68.2, "track_id": 41},
+    {"id": "GT-13", "event_type": "INSUFFICIENT_EVIDENCE", "start_ts": 71.0, "end_ts": 72.1, "track_id": 44},
+    {"id": "GT-14", "event_type": "INSUFFICIENT_EVIDENCE", "start_ts": 75.5, "end_ts": 76.5, "track_id": 46},
+    {"id": "GT-15", "event_type": "WRONG_WAY", "start_ts": 79.0, "end_ts": 82.5, "track_id": 48},
+    {"id": "GT-16", "event_type": "CROSSWALK_RIDING", "start_ts": 85.0, "end_ts": 88.0, "track_id": 50},
+    {"id": "GT-17", "event_type": "EXEMPT_WALKING", "start_ts": 90.0, "end_ts": 94.2, "track_id": 51},
+    {"id": "GT-18", "event_type": "WRONG_WAY", "start_ts": 96.0, "end_ts": 99.5, "track_id": 53},
+    {"id": "GT-19", "event_type": "CROSSWALK_RIDING", "start_ts": 102.0, "end_ts": 105.1, "track_id": 55},
+    {"id": "GT-20", "event_type": "INSUFFICIENT_EVIDENCE", "start_ts": 108.0, "end_ts": 109.2, "track_id": 58}
+  ]
+}
+

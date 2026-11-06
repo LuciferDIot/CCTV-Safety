@@ -1,0 +1,32 @@
+{
+  "total_gt": 20,
+  "total_pred": 1,
+  "categories": {
+    "CROSSWALK_RIDING": {
+      "TP": 0,
+      "FP": 1,
+      "FN": 6
+    },
+    "WRONG_WAY": {
+      "TP": 0,
+      "FP": 0,
+      "FN": 6
+    },
+    "EXEMPT_WALKING": {
+      "TP": 0,
+      "FP": 0,
+      "FN": 4
+    },
+    "INSUFFICIENT_EVIDENCE": {
+      "TP": 0,
+      "FP": 0,
+      "FN": 4
+    }
+  },
+  "matches": [],
+  "overall": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0
+  }
+}
