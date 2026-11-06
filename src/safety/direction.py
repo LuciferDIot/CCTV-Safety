@@ -1,16 +1,16 @@
-"""
-Direction Checker: Robust Wrong-Way Detection with Sustained Movement Verification
-Protects stationary vehicles, suppresses lateral turns, and filters out ambiguous lane positions.
-"""
+"""Direction Checker: Robust wrong-way detection with sustained movement."""
 from collections import defaultdict
 import math
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.core.geometry import get_ground_anchor, get_motion_metrics
+from src.core.motion import get_motion_metrics
+
 
 class DirectionChecker:
+    """Evaluates tracked vehicle trajectories against permitted lane flow vectors."""
+
     def __init__(
         self,
         min_frames: int = 5,
@@ -33,6 +33,37 @@ class DirectionChecker:
         self.first_detected_frame: Dict[int, int] = {}
         self.last_detected_frame: Dict[int, int] = {}
 
+    def _eval_vehicle(
+        self, tid: int, hist: list, u_vec: Tuple[float, float], is_ambiguous: bool, frame_idx: int
+    ) -> Tuple[bool, bool]:
+        """Evaluate single vehicle kinematics for counter-flow travel."""
+        pts = [(h[0], h[1]) if isinstance(h, (tuple, list)) else (h.cx, h.cy) for h in hist]
+        corr_spd, corr_dist, _, dx, dy = get_motion_metrics(
+            pts, window=5, frame_height=self.frame_height, perspective_cfg=self.perspective_cfg
+        )
+        if corr_spd < self.min_recent_speed or corr_dist < self.min_total_dist_px:
+            self.wrong_way_streaks[tid] = max(0, self.wrong_way_streaks[tid] - 1)
+            return (False, False)
+
+        dist = math.hypot(dx, dy)
+        if dist <= 0:
+            return (False, False)
+
+        vx, vy = dx / dist, dy / dist
+        long_dot = vx * u_vec[0] + vy * u_vec[1]
+        lat_dot = abs(vx * -u_vec[1] + vy * u_vec[0])
+
+        if lat_dot >= abs(long_dot) or long_dot >= self.wrong_way_threshold:
+            self.wrong_way_streaks[tid] = max(0, self.wrong_way_streaks[tid] - 1)
+            return (False, False)
+
+        self.wrong_way_streaks[tid] += 1
+        self.last_detected_frame[tid] = frame_idx
+        self.first_detected_frame.setdefault(tid, frame_idx)
+
+        confirmed = (self.wrong_way_streaks[tid] >= self.min_sustained_frames and not is_ambiguous)
+        return (confirmed, True)
+
     def check_detections(
         self,
         detections: sv.Detections,
@@ -42,58 +73,17 @@ class DirectionChecker:
         frame_idx: int = 0,
         ambiguous_mask: Optional[np.ndarray] = None
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Evaluates vehicles for sustained wrong-way travel."""
-        if len(detections) == 0 or detections.tracker_id is None:
-            return (np.zeros(len(detections), dtype=bool), np.zeros(len(detections), dtype=bool))
+        """Evaluate detections returning (confirmed_mask, suspected_mask)."""
+        n = len(detections)
+        if n == 0 or detections.tracker_id is None:
+            return (np.zeros(n, dtype=bool), np.zeros(n, dtype=bool))
 
-        ux, uy = permitted_vector
-        lat_ux, lat_uy = -uy, ux
-
-        confirmed_mask = np.zeros(len(detections), dtype=bool)
-        suspected_mask = np.zeros(len(detections), dtype=bool)
-
-        for idx, (xyxy, tracker_id) in enumerate(zip(detections.xyxy, detections.tracker_id)):
-            if tracker_id is None:
+        conf_m, susp_m = np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
+        for i, tid in enumerate(detections.tracker_id):
+            if tid is None or tid not in track_history or len(track_history[tid]) < self.min_frames:
                 continue
+            is_ambig = bool(ambiguous_mask[i]) if ambiguous_mask is not None else False
+            c, s = self._eval_vehicle(tid, track_history[tid], permitted_vector, is_ambig, frame_idx)
+            conf_m[i], susp_m[i] = c, s
 
-            if tracker_id not in track_history or len(track_history[tracker_id]) < self.min_frames:
-                continue
-
-            hist = track_history[tracker_id]
-            pts = [(h[0], h[1]) if isinstance(h, (tuple, list)) else (h.cx, h.cy) for h in hist]
-
-            corr_speed, corr_dist, raw_speed, dx, dy = get_motion_metrics(
-                pts, window=5, frame_height=self.frame_height, perspective_cfg=self.perspective_cfg
-            )
-
-            if corr_speed < self.min_recent_speed or corr_dist < self.min_total_dist_px:
-                self.wrong_way_streaks[tracker_id] = max(0, self.wrong_way_streaks[tracker_id] - 1)
-                continue
-
-            total_dist = math.hypot(dx, dy)
-            if total_dist <= 0:
-                continue
-            vx = dx / total_dist
-            vy = dy / total_dist
-
-            long_dot = vx * ux + vy * uy
-            lat_dot = abs(vx * lat_ux + vy * lat_uy)
-
-            if lat_dot >= abs(long_dot):
-                self.wrong_way_streaks[tracker_id] = max(0, self.wrong_way_streaks[tracker_id] - 1)
-                continue
-
-            is_ambiguous = (ambiguous_mask is not None and ambiguous_mask[idx])
-            if long_dot < self.wrong_way_threshold:
-                suspected_mask[idx] = True
-                self.wrong_way_streaks[tracker_id] += 1
-                self.last_detected_frame[tracker_id] = frame_idx
-                if tracker_id not in self.first_detected_frame:
-                    self.first_detected_frame[tracker_id] = frame_idx
-
-                if self.wrong_way_streaks[tracker_id] >= self.min_sustained_frames and not is_ambiguous:
-                    confirmed_mask[idx] = True
-            else:
-                self.wrong_way_streaks[tracker_id] = max(0, self.wrong_way_streaks[tracker_id] - 1)
-
-        return (confirmed_mask, suspected_mask)
+        return (conf_m, susp_m)

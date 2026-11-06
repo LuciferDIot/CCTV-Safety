@@ -1,17 +1,19 @@
-"""
-Crosswalk Checker: Detect Motorcycles Traversing Pedestrian Crossings
-Distinguishes actual passage from boundary fringe overlap or stopping nearby.
-Distinguishes CROSSWALK_RIDING from EXEMPT_WALKING (dismounted rider walking a bike).
-"""
+"""Crosswalk Checker: Detect Motorcycles Traversing Pedestrian Crossings."""
 from collections import defaultdict
 import math
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.core.geometry import get_ground_anchor, get_motion_metrics, point_to_polygon_dist, compute_perspective_scale
+from src.core.anchors import get_ground_anchor
+from src.core.perspective import compute_perspective_scale
+from src.core.motion import get_motion_metrics, point_to_polygon_dist
+from src.safety.crosswalk_rules import is_normal_lane_transit, classify_crosswalk_motion
+
 
 class CrosswalkSafetyChecker:
+    """Evaluates motorcycle traversals over designated crosswalk zones."""
+
     def __init__(
         self,
         crosswalk_polygons: List[np.ndarray],
@@ -33,10 +35,40 @@ class CrosswalkSafetyChecker:
         self.min_traversal_frames = min_traversal_frames
         self.frame_height = frame_height
         self.perspective_cfg = perspective_cfg
-
         self.frames_in_cw: Dict[int, int] = defaultdict(int)
         self.entry_point: Dict[int, Tuple[float, float]] = {}
         self.status_cache: Dict[int, str] = {}
+
+    def _eval_bike(
+        self, tid: int, xyxy: np.ndarray, hist: list, l_vecs: Optional[List[Tuple[float, float]]]
+    ) -> Optional[str]:
+        cx, cy = get_ground_anchor(xyxy)
+        pts = [(h[0], h[1]) if isinstance(h, (tuple, list)) else (h.cx, h.cy) for h in hist]
+        spd, dist, _, dx, dy = get_motion_metrics(
+            pts, 5, self.frame_height, self.perspective_cfg
+        )
+        if not any(point_to_polygon_dist((cx, cy), p) >= 0 for p in self.crosswalk_polygons):
+            self.frames_in_cw[tid] = 0
+            self.entry_point.pop(tid, None)
+            return None
+
+        self.frames_in_cw[tid] += 1
+        self.entry_point.setdefault(tid, (cx, cy))
+        if is_normal_lane_transit(dx, dy, l_vecs):
+            return None
+        if spd < 1.5 or dist < 15.0:
+            return "STOPPED_NEAR_CROSSWALK"
+
+        scale = compute_perspective_scale(cy, self.frame_height, self.perspective_cfg)
+        cw_d = math.hypot(cx - self.entry_point[tid][0], cy - self.entry_point[tid][1]) / max(0.1, scale)
+        if cw_d < self.min_passage_dist_px or self.frames_in_cw[tid] < self.min_traversal_frames:
+            return "TRAVERSING_PRELIMINARY"
+
+        status = classify_crosswalk_motion(
+            spd, cw_d, self.min_passage_dist_px, self.max_walking_speed, self.min_riding_speed
+        )
+        self.status_cache[tid] = status
+        return status
 
     def check_motorcycles(
         self,
@@ -45,87 +77,17 @@ class CrosswalkSafetyChecker:
         frame_idx: int,
         lane_vectors: Optional[List[Tuple[float, float]]] = None
     ) -> Dict[int, str]:
-        """
-        Evaluates motorcycles for crosswalk traversal.
-        Exempts normal motorcycles driving along their designated traffic lanes.
-        Detects motorcycles traversing across the pedestrian crosswalk (lateral/pedestrian crossing).
-        """
+        """Check detections for crosswalk violations or exempt pedestrian walking."""
         results = {}
         if len(detections) == 0 or detections.tracker_id is None:
             return results
-
         bike_mask = np.isin(detections.class_id, [1, 3])
         if not np.any(bike_mask):
             return results
 
-        bike_dets = detections[bike_mask]
-
-        for xyxy, tid, cid in zip(bike_dets.xyxy, bike_dets.tracker_id, bike_dets.class_id):
-            if tid is None or tid not in track_history:
-                continue
-
-            hist = track_history[tid]
-            if len(hist) < 3:
-                continue
-
-            cx, cy = get_ground_anchor(xyxy)
-            pts = [(h[0], h[1]) if isinstance(h, (tuple, list)) else (h.cx, h.cy) for h in hist]
-
-            corr_speed, corr_dist, raw_speed, dx, dy = get_motion_metrics(
-                pts, window=5, frame_height=self.frame_height, perspective_cfg=self.perspective_cfg
-            )
-
-            in_cw = False
-            for cw_poly in self.crosswalk_polygons:
-                dist = point_to_polygon_dist((cx, cy), cw_poly)
-                if dist >= 0:
-                    in_cw = True
-                    break
-
-            if not in_cw:
-                self.frames_in_cw[tid] = 0
-                if tid in self.entry_point:
-                    del self.entry_point[tid]
-                continue
-
-            self.frames_in_cw[tid] += 1
-            if tid not in self.entry_point:
-                self.entry_point[tid] = (cx, cy)
-
-            # 1. Distinguish Normal Lane Travel through Intersection
-            v_len = math.hypot(dx, dy)
-            if v_len > 0.5 and lane_vectors is not None:
-                v_norm = (dx / v_len, dy / v_len)
-                is_normal_flow = False
-                for l_vec in lane_vectors:
-                    dot = v_norm[0] * l_vec[0] + v_norm[1] * l_vec[1]
-                    if dot >= 0.65 and abs(dy) >= 0.8 * abs(dx):
-                        is_normal_flow = True
-                        break
-                if is_normal_flow:
-                    continue
-
-            # 2. Distinguish Stopped Nearby vs Actual Passage
-            if corr_speed < 1.5 or corr_dist < 15.0:
-                results[tid] = "STOPPED_NEAR_CROSSWALK"
-                self.status_cache[tid] = "STOPPED_NEAR_CROSSWALK"
-                continue
-
-            entry_x, entry_y = self.entry_point[tid]
-            cw_dist = math.hypot(cx - entry_x, cy - entry_y)
-            scale = compute_perspective_scale(cy, self.frame_height, self.perspective_cfg)
-            cw_dist_corr = cw_dist / max(0.1, scale)
-
-            if cw_dist_corr < self.min_passage_dist_px or self.frames_in_cw[tid] < self.min_traversal_frames:
-                results[tid] = "TRAVERSING_PRELIMINARY"
-                continue
-
-            # 3. Distinguish Riding vs Walking a Motorcycle across the crosswalk
-            if corr_speed <= self.max_walking_speed:
-                results[tid] = "EXEMPT_WALKING"
-                self.status_cache[tid] = "EXEMPT_WALKING"
-            elif corr_speed >= self.min_riding_speed or cw_dist_corr >= self.min_passage_dist_px:
-                results[tid] = "CROSSWALK_RIDING"
-                self.status_cache[tid] = "CROSSWALK_RIDING"
-
+        for box, tid in zip(detections[bike_mask].xyxy, detections[bike_mask].tracker_id):
+            if tid is not None and tid in track_history and len(track_history[tid]) >= 3:
+                res = self._eval_bike(tid, box, track_history[tid], lane_vectors)
+                if res:
+                    results[tid] = res
         return results

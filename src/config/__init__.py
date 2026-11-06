@@ -16,3 +16,4 @@ __all__ = [
     "CrosswalkConfig",
     "load_intersection_config",
 ]
+

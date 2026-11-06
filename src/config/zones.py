@@ -61,3 +61,4 @@ def load_intersection_config(config_path: Path) -> IntersectionConfig:
     with open(config_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return IntersectionConfig(**data)
+

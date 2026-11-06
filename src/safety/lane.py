@@ -1,30 +1,16 @@
-"""
-Automatic Lane Segmentation, Permitted Direction Discovery, and Soft Lane Assignment
-Accounts for perspective distortion and lane boundary ambiguity along the divider line.
-"""
-from collections import defaultdict
-import math
-from typing import Dict, List, Tuple, Optional, Any
+"""Automatic lane detection and soft lane assignment."""
+from typing import List, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.core.geometry import compute_perspective_scale, point_to_polygon_dist
+from src.core.perspective import compute_perspective_scale
+from src.core.motion import point_to_polygon_dist
+from src.safety.lane_geometry import point_to_segment_dist
 
-def point_to_segment_dist(p: Tuple[float, float], a: Tuple[float, float], b: Tuple[float, float]) -> float:
-    """Computes Euclidean distance from point p to line segment ab."""
-    px, py = p
-    ax, ay = a
-    bx, by = b
-    abx, aby = bx - ax, by - ay
-    seg_len_sq = abx * abx + aby * aby
-    if seg_len_sq == 0:
-        return math.hypot(px - ax, py - ay)
-    t = max(0.0, min(1.0, ((px - ax) * abx + (py - ay) * aby) / seg_len_sq))
-    proj_x = ax + t * abx
-    proj_y = ay + t * aby
-    return math.hypot(px - proj_x, py - proj_y)
 
 class AutoLaneDetector:
+    """Manages road and lane polygon zones with soft divider ambiguity detection."""
+
     def __init__(
         self,
         road_polygon: np.ndarray,
@@ -47,15 +33,14 @@ class AutoLaneDetector:
             polygon=self.road_polygon,
             triggering_anchors=[sv.Position.BOTTOM_CENTER]
         )
-
         self.is_calibrated = False
         self.lanes = []
         self.lane_zones = []
         self.divider_segment = None
 
-    def calibrate(self, fallback_lanes: Optional[List[Any]] = None):
-        """Initializes lane zones and extracts the dividing boundary segment between lanes."""
-        if fallback_lanes is not None and len(fallback_lanes) > 0:
+    def calibrate(self, fallback_lanes: Optional[List[Any]] = None) -> None:
+        """Initialize lane polygon zones and the dividing boundary line."""
+        if fallback_lanes:
             self.lanes = fallback_lanes
             self.lane_zones = [
                 sv.PolygonZone(
@@ -69,31 +54,27 @@ class AutoLaneDetector:
                 self.divider_segment = (tuple(poly0[1]), tuple(poly0[2]))
             self.is_calibrated = True
 
-    def assign_lane(
-        self,
-        point: Tuple[float, float]
-    ) -> Tuple[Optional[int], bool, float]:
-        """Soft lane assignment. Returns (best_lane_idx, is_ambiguous, distance_to_divider)."""
+    def assign_lane(self, point: Tuple[float, float]) -> Tuple[Optional[int], bool, float]:
+        """Soft lane assignment returning (lane_idx, is_ambiguous, dist_to_divider)."""
         cx, cy = point
         scale = compute_perspective_scale(cy, self.frame_height, self.perspective_cfg)
         margin = self.ambiguity_margin_px * scale
 
-        contained_lanes = []
+        contained = []
         for idx, lane in enumerate(self.lanes):
             poly = np.array(lane.polygon, dtype=np.int32)
             d = point_to_polygon_dist((cx, cy), poly)
             if d >= 0:
-                contained_lanes.append((idx, d))
+                contained.append((idx, d))
 
-        if not contained_lanes:
+        if not contained:
             return (None, False, -1.0)
 
-        contained_lanes.sort(key=lambda x: x[1], reverse=True)
-        best_lane_idx = contained_lanes[0][0]
+        contained.sort(key=lambda x: x[1], reverse=True)
+        best_idx = contained[0][0]
 
-        dist_to_divider = float("inf")
+        dist_div = float("inf")
         if self.divider_segment:
-            dist_to_divider = point_to_segment_dist((cx, cy), self.divider_segment[0], self.divider_segment[1])
+            dist_div = point_to_segment_dist((cx, cy), self.divider_segment[0], self.divider_segment[1])
 
-        is_ambiguous = (dist_to_divider < margin)
-        return (best_lane_idx, is_ambiguous, dist_to_divider)
+        return (best_idx, dist_div < margin, dist_div)
