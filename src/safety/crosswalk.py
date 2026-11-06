@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.geometry_utils import get_ground_anchor, get_motion_metrics, point_to_polygon_dist, compute_perspective_scale
+from src.core.geometry import get_ground_anchor, get_motion_metrics, point_to_polygon_dist, compute_perspective_scale
 
 class CrosswalkSafetyChecker:
     def __init__(
@@ -34,7 +34,6 @@ class CrosswalkSafetyChecker:
         self.frame_height = frame_height
         self.perspective_cfg = perspective_cfg
 
-        # Track history within crosswalk zones
         self.frames_in_cw: Dict[int, int] = defaultdict(int)
         self.entry_point: Dict[int, Tuple[float, float]] = {}
         self.status_cache: Dict[int, str] = {}
@@ -50,15 +49,11 @@ class CrosswalkSafetyChecker:
         Evaluates motorcycles for crosswalk traversal.
         Exempts normal motorcycles driving along their designated traffic lanes.
         Detects motorcycles traversing across the pedestrian crosswalk (lateral/pedestrian crossing).
-        
-        Returns:
-            dict mapping tracker_id -> status in ["CROSSWALK_RIDING", "EXEMPT_WALKING", "STOPPED", "TOUCHING"]
         """
         results = {}
         if len(detections) == 0 or detections.tracker_id is None:
             return results
 
-        # Only evaluate two-wheelers (Bike / Motorcycle)
         bike_mask = np.isin(detections.class_id, [1, 3])
         if not np.any(bike_mask):
             return results
@@ -80,11 +75,10 @@ class CrosswalkSafetyChecker:
                 pts, window=5, frame_height=self.frame_height, perspective_cfg=self.perspective_cfg
             )
 
-            # Check containment inside any crosswalk polygon
             in_cw = False
             for cw_poly in self.crosswalk_polygons:
                 dist = point_to_polygon_dist((cx, cy), cw_poly)
-                if dist >= 0:  # Ground anchor is strictly inside polygon
+                if dist >= 0:
                     in_cw = True
                     break
 
@@ -94,14 +88,11 @@ class CrosswalkSafetyChecker:
                     del self.entry_point[tid]
                 continue
 
-            # Update crosswalk presence counter
             self.frames_in_cw[tid] += 1
             if tid not in self.entry_point:
                 self.entry_point[tid] = (cx, cy)
 
             # 1. Distinguish Normal Lane Travel through Intersection
-            # If the motorcycle is driving along the traffic lane in the permitted direction,
-            # it is executing normal road travel, NOT a pedestrian crosswalk violation.
             v_len = math.hypot(dx, dy)
             if v_len > 0.5 and lane_vectors is not None:
                 v_norm = (dx / v_len, dy / v_len)
@@ -115,25 +106,21 @@ class CrosswalkSafetyChecker:
                     continue
 
             # 2. Distinguish Stopped Nearby vs Actual Passage
-            # If vehicle is stopped or moving negligibly, it's holding still (e.g. at red light)
             if corr_speed < 1.5 or corr_dist < 15.0:
                 results[tid] = "STOPPED_NEAR_CROSSWALK"
                 self.status_cache[tid] = "STOPPED_NEAR_CROSSWALK"
                 continue
 
-            # Check total traversal distance inside the crosswalk
             entry_x, entry_y = self.entry_point[tid]
             cw_dist = math.hypot(cx - entry_x, cy - entry_y)
             scale = compute_perspective_scale(cy, self.frame_height, self.perspective_cfg)
             cw_dist_corr = cw_dist / max(0.1, scale)
 
-            # Distinguish boundary touch from actual traversal
             if cw_dist_corr < self.min_passage_dist_px or self.frames_in_cw[tid] < self.min_traversal_frames:
                 results[tid] = "TRAVERSING_PRELIMINARY"
                 continue
 
             # 3. Distinguish Riding vs Walking a Motorcycle across the crosswalk
-            # If moving at walking speed with low speed kinematics -> EXEMPT_WALKING
             if corr_speed <= self.max_walking_speed:
                 results[tid] = "EXEMPT_WALKING"
                 self.status_cache[tid] = "EXEMPT_WALKING"
@@ -142,4 +129,3 @@ class CrosswalkSafetyChecker:
                 self.status_cache[tid] = "CROSSWALK_RIDING"
 
         return results
-

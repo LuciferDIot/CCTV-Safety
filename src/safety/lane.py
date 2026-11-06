@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.geometry_utils import compute_perspective_scale, point_to_polygon_dist
+from src.core.geometry import compute_perspective_scale, point_to_polygon_dist
 
 def point_to_segment_dist(p: Tuple[float, float], a: Tuple[float, float], b: Tuple[float, float]) -> float:
     """Computes Euclidean distance from point p to line segment ab."""
@@ -73,9 +73,7 @@ class AutoLaneDetector:
         self,
         point: Tuple[float, float]
     ) -> Tuple[Optional[int], bool, float]:
-        """
-        Soft lane assignment. Returns (best_lane_idx, is_ambiguous, distance_to_divider).
-        """
+        """Soft lane assignment. Returns (best_lane_idx, is_ambiguous, distance_to_divider)."""
         cx, cy = point
         scale = compute_perspective_scale(cy, self.frame_height, self.perspective_cfg)
         margin = self.ambiguity_margin_px * scale
@@ -90,11 +88,9 @@ class AutoLaneDetector:
         if not contained_lanes:
             return (None, False, -1.0)
 
-        # Primary containing lane
         contained_lanes.sort(key=lambda x: x[1], reverse=True)
         best_lane_idx = contained_lanes[0][0]
 
-        # Check proximity specifically to the lane dividing line
         dist_to_divider = float("inf")
         if self.divider_segment:
             dist_to_divider = point_to_segment_dist((cx, cy), self.divider_segment[0], self.divider_segment[1])

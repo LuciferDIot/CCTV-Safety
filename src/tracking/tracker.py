@@ -1,5 +1,5 @@
 """
-Tracker Manager: Robust Multi-Vehicle & Motorcycle Identity Maintenance
+Robust Multi-Vehicle & Motorcycle Identity Maintenance
 Handles occlusions, overlapping rider/chassis detections, missed detections,
 and tracking ID changes (track stitching / ReID).
 """
@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.geometry_utils import get_box_geometry, get_ground_anchor, compute_perspective_scale
+from src.core.geometry import get_box_geometry, get_ground_anchor, compute_perspective_scale
 
 class TrackState:
     def __init__(self, canonical_id: int, initial_frame: int, xyxy: np.ndarray, class_id: int):
@@ -127,7 +127,6 @@ class RobustTrackerManager:
             if raw_tid is None:
                 continue
 
-            # Check if this raw tracker ID is already known
             if raw_tid in self.raw_to_canonical:
                 cid_canon = self.raw_to_canonical[raw_tid]
                 track = self.tracks[cid_canon]
@@ -148,14 +147,12 @@ class RobustTrackerManager:
                     self.tracks[new_id].raw_tids.add(raw_tid)
                     canonical_ids[i] = new_id
 
-        # Update missed count for inactive tracks
         for canon_id, track in self.tracks.items():
             if track.last_seen_frame < frame_idx:
                 track.missed_count += 1
                 if track.missed_count > self.max_reconnect_frames:
                     track.is_active = False
 
-        # Ensure all detections have a valid canonical track ID
         for i in range(len(canonical_ids)):
             if canonical_ids[i] == 0:
                 new_id = self.next_canonical_id
@@ -167,9 +164,7 @@ class RobustTrackerManager:
         return detections
 
     def _attempt_stitch(self, xyxy: np.ndarray, class_id: int, frame_idx: int) -> Optional[int]:
-        """
-        Spatial & directional track stitching across occlusions or ByteTrack ID switches.
-        """
+        """Spatial & directional track stitching across occlusions or ByteTrack ID switches."""
         cx, cy = get_ground_anchor(xyxy)
         scale = compute_perspective_scale(cy, self.frame_height, self.perspective_cfg)
         max_dist = self.max_reconnect_dist_px * scale

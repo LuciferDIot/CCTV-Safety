@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import supervision as sv
 
-from src.geometry_utils import get_ground_anchor, get_motion_metrics
+from src.core.geometry import get_ground_anchor, get_motion_metrics
 
 class DirectionChecker:
     def __init__(
@@ -29,7 +29,6 @@ class DirectionChecker:
         self.frame_height = frame_height
         self.perspective_cfg = perspective_cfg
 
-        # Track persistent wrong-way state per vehicle
         self.wrong_way_streaks: Dict[int, int] = defaultdict(int)
         self.first_detected_frame: Dict[int, int] = {}
         self.last_detected_frame: Dict[int, int] = {}
@@ -43,12 +42,7 @@ class DirectionChecker:
         frame_idx: int = 0,
         ambiguous_mask: Optional[np.ndarray] = None
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Evaluates vehicles for sustained wrong-way travel.
-        
-        Returns:
-            (confirmed_wrong_way_mask, suspected_mask)
-        """
+        """Evaluates vehicles for sustained wrong-way travel."""
         if len(detections) == 0 or detections.tracker_id is None:
             return (np.zeros(len(detections), dtype=bool), np.zeros(len(detections), dtype=bool))
 
@@ -72,28 +66,23 @@ class DirectionChecker:
                 pts, window=5, frame_height=self.frame_height, perspective_cfg=self.perspective_cfg
             )
 
-            # 1. Stationary Filter: ignore vehicles stopped at signals or parked
             if corr_speed < self.min_recent_speed or corr_dist < self.min_total_dist_px:
                 self.wrong_way_streaks[tracker_id] = max(0, self.wrong_way_streaks[tracker_id] - 1)
                 continue
 
-            # 2. Motion direction vector
             total_dist = math.hypot(dx, dy)
             if total_dist <= 0:
                 continue
             vx = dx / total_dist
             vy = dy / total_dist
 
-            # 3. Longitudinal vs lateral turning motion
             long_dot = vx * ux + vy * uy
             lat_dot = abs(vx * lat_ux + vy * lat_uy)
 
-            # Skip lateral turning across lanes or pulling to curb
             if lat_dot >= abs(long_dot):
                 self.wrong_way_streaks[tracker_id] = max(0, self.wrong_way_streaks[tracker_id] - 1)
                 continue
 
-            # 4. Check counter-flow direction
             is_ambiguous = (ambiguous_mask is not None and ambiguous_mask[idx])
             if long_dot < self.wrong_way_threshold:
                 suspected_mask[idx] = True
@@ -102,7 +91,6 @@ class DirectionChecker:
                 if tracker_id not in self.first_detected_frame:
                     self.first_detected_frame[tracker_id] = frame_idx
 
-                # Sustained movement check: require >= min_sustained_frames (and not ambiguous divider)
                 if self.wrong_way_streaks[tracker_id] >= self.min_sustained_frames and not is_ambiguous:
                     confirmed_mask[idx] = True
             else:

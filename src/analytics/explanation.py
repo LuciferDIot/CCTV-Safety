@@ -31,7 +31,6 @@ class ExplanationEngine:
         # 1. Draw Trajectory Breadcrumbs
         if len(trajectory) >= 2:
             pts = np.array(trajectory, dtype=np.int32).reshape((-1, 1, 2))
-            # Fading line
             for i in range(len(pts) - 1):
                 pt1 = tuple(pts[i][0])
                 pt2 = tuple(pts[i + 1][0])
@@ -41,7 +40,6 @@ class ExplanationEngine:
                 cv2.line(canvas, pt1, pt2, color, thickness, cv2.LINE_AA)
                 cv2.circle(canvas, pt2, max(3, int(6 * alpha)), color, -1)
 
-            # Draw start point (Green circle) and latest point
             cv2.circle(canvas, tuple(pts[0][0]), 8, (0, 255, 0), -1)
             cv2.putText(canvas, "START", (pts[0][0][0] + 12, pts[0][0][1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
@@ -87,4 +85,3 @@ class ExplanationEngine:
         elif event_type == "INSUFFICIENT_EVIDENCE":
             return (0, 215, 255)     # Amber/Yellow
         return (0, 255, 0)           # Green
-

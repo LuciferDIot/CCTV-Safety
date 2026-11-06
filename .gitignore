@@ -32,6 +32,10 @@ models/*.pt
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 
+# Generated outputs
+data/output/
+
+
 # OS generated files
 .DS_Store
 Thumbs.db
