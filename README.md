@@ -86,6 +86,15 @@ Interactive API documentation will be available at:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+### 4. Run the Next.js Dashboard Frontend
+From within `frontend/`:
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+Open `http://localhost:3000` in your browser to access the interactive AURA-Traffic Safety Analyzer dashboard.
+
 ---
 
 ## 🧪 Running Automated Tests
