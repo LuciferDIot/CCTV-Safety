@@ -686,8 +686,8 @@ export default function DashboardPage() {
                 onPointerMove={handleSvgPointerMove}
                 onPointerUp={() => setDraggingVertex(null)}
               >
-                {/* Road Zone Polygon */}
-                {zones?.road?.polygon && (
+                {/* Road Zone Polygon (Visible in Edit mode or Raw mode) */}
+                {(mode === 'edit' || videoViewMode === 'raw') && zones?.road?.polygon && (
                   <polygon
                     points={zones.road.polygon.map((p) => p.join(',')).join(' ')}
                     fill={mode === 'edit' && activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
@@ -698,7 +698,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* Crosswalk Polygon Zone (if enabled) */}
-                {crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
+                {(mode === 'edit' || videoViewMode === 'raw') && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
                   <polygon
                     points={zones.crosswalks[0].polygon.map((p) => p.join(',')).join(' ')}
                     fill={mode === 'edit' && activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
@@ -746,15 +746,6 @@ export default function DashboardPage() {
                       </text>
                     </g>
                   ))}
-
-                {/* Lane Permitted Direction Arrow */}
-                <g transform="translate(2100, 1200)">
-                  <line x1="0" y1="0" x2="0" y2="400" stroke="#4ade80" strokeWidth="12" strokeDasharray="20 10" />
-                  <polygon points="-24,380 0,430 24,380" fill="#4ade80" />
-                  <text x="35" y="220" fill="#4ade80" fontSize="48" fontFamily="monospace" fontWeight="bold">
-                    PERMITTED FLOW
-                  </text>
-                </g>
               </svg>
             </div>
 
@@ -808,8 +799,8 @@ export default function DashboardPage() {
                 <span>{crosswalkEnabled ? 'Crosswalk Zone (Active)' : 'Crosswalk (Disabled)'}</span>
               </div>
               <div>
-                <span className="legend-line green" />
-                <span>Permitted Flow Vector</span>
+                <span className="legend-line" style={{ background: '#4ade80' }} />
+                <span>Auto-Learned Trajectory Flow</span>
               </div>
               <div className="canvas-resolution">
                 3840×2160 UHD · Native Coordinate Mapping

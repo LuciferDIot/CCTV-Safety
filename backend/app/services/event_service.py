@@ -28,8 +28,8 @@ class EventService:
                 events.extend([self._to_traffic_event(item) for item in raw_list])
             except Exception:
                 pass
-        if include_demo and not events:
-            events = [self._to_traffic_event(d) for d in get_demo_scenarios()]
+        if include_demo:
+            events.extend([self._to_traffic_event(d) for d in get_demo_scenarios()])
 
         if status:
             events = [e for e in events if e.status.upper() == status.upper()]

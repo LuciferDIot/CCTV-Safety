@@ -23,10 +23,14 @@ def create_annotators(lane_zones: list, crosswalk_zones: list) -> PipelineAnnota
     green_palette = sv.ColorPalette.from_hex(["#00FF00"])
 
     z_annotators = [
-        sv.PolygonZoneAnnotator(zone=z, color=sv.Color(r=0, g=128, b=255), thickness=2)
+        sv.PolygonZoneAnnotator(
+            zone=z, color=sv.Color(r=0, g=128, b=255), thickness=2, display_in_zone_count=False
+        )
         for z in lane_zones
     ] + [
-        sv.PolygonZoneAnnotator(zone=z, color=sv.Color(r=0, g=229, b=255), thickness=3)
+        sv.PolygonZoneAnnotator(
+            zone=z, color=sv.Color(r=0, g=229, b=255), thickness=3, display_in_zone_count=False
+        )
         for z in crosswalk_zones
     ]
 
