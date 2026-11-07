@@ -1,1054 +1,833 @@
 {
-  "total_events": 45,
+  "total_events": 52,
   "events": [
     {
       "id": "EV-01",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 14,
-      "end_frame": 124,
-      "start_ts": 0.47,
-      "end_ts": 4.13,
-      "duration_s": 3.66,
+      "start_frame": 16,
+      "end_frame": 95,
+      "start_ts": 0.53,
+      "end_ts": 3.17,
+      "duration_s": 2.64,
       "track_ids": [
-        7,
-        9,
-        11
+        3,
+        14
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (0.58 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (0.81 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 1.03,
-        "eff_dist_h": 1.06,
-        "median_speed_h_s": 0.58,
+        "duration_s": 2.5,
+        "eff_dist_h": 2.07,
+        "median_speed_h_s": 0.81,
         "votes": {
-          "mounted": 2,
-          "dismounted": 29,
+          "mounted": 51,
+          "dismounted": 24,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        14,
-        69,
-        124
+        16,
+        55,
+        95
       ]
     },
     {
       "id": "EV-02",
       "event_type": "CROSSWALK_RIDING",
       "verdict": "SUSPECTED",
-      "start_frame": 38,
-      "end_frame": 89,
-      "start_ts": 1.27,
-      "end_ts": 2.97,
-      "duration_s": 1.7,
+      "start_frame": 20,
+      "end_frame": 148,
+      "start_ts": 0.67,
+      "end_ts": 4.93,
+      "duration_s": 4.26,
       "track_ids": [
-        8
+        4
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Mounted rider traversed crosswalk_top at 0.93 H/s across 2.0H",
+      "reason": "Mounted rider traversed crosswalk_top at 0.98 H/s across 4.6H",
       "metrics": {
-        "duration_s": 1.73,
-        "eff_dist_h": 2.0,
-        "median_speed_h_s": 0.93,
+        "duration_s": 4.3,
+        "eff_dist_h": 4.57,
+        "median_speed_h_s": 0.98,
         "votes": {
-          "mounted": 41,
-          "dismounted": 11,
+          "mounted": 78,
+          "dismounted": 51,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        38,
-        63,
-        89
+        20,
+        84,
+        148
       ]
     },
     {
       "id": "EV-03",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 53,
-      "end_frame": 68,
-      "start_ts": 1.77,
-      "end_ts": 2.27,
-      "duration_s": 0.5,
+      "verdict": "SUSPECTED",
+      "start_frame": 45,
+      "end_frame": 116,
+      "start_ts": 1.5,
+      "end_ts": 3.87,
+      "duration_s": 2.37,
       "track_ids": [
-        7
+        16
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.53s across 4.8H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 2.40s across 7.3H",
       "metrics": {
-        "duration_s": 0.53,
-        "disp_h": 4.77,
-        "median_speed_h_s": 7.81
+        "duration_s": 2.4,
+        "disp_h": 7.28,
+        "median_speed_h_s": 2.71
       },
       "evidence_frames": [
-        53,
-        60,
-        68
+        45,
+        80,
+        116
       ]
     },
     {
       "id": "EV-04",
-      "event_type": "CROSSWALK_RIDING",
+      "event_type": "WRONG_WAY",
       "verdict": "SUSPECTED",
-      "start_frame": 54,
-      "end_frame": 132,
-      "start_ts": 1.8,
-      "end_ts": 4.4,
-      "duration_s": 2.6,
+      "start_frame": 47,
+      "end_frame": 218,
+      "start_ts": 1.57,
+      "end_ts": 7.27,
+      "duration_s": 5.7,
       "track_ids": [
-        2,
-        19,
-        24
+        15
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Mounted rider traversed crosswalk_top at 1.21 H/s across 2.1H",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 5.73s across 8.9H",
       "metrics": {
-        "duration_s": 1.07,
-        "eff_dist_h": 2.08,
-        "median_speed_h_s": 1.21,
-        "votes": {
-          "mounted": 19,
-          "dismounted": 13,
-          "unknown": 0
-        }
+        "duration_s": 5.73,
+        "disp_h": 8.86,
+        "median_speed_h_s": 1.22
       },
       "evidence_frames": [
-        54,
-        93,
-        132
+        47,
+        132,
+        218
       ]
     },
     {
       "id": "EV-05",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 115,
-      "end_frame": 190,
-      "start_ts": 3.83,
-      "end_ts": 6.33,
-      "duration_s": 2.5,
+      "event_type": "WRONG_WAY",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 61,
+      "end_frame": 76,
+      "start_ts": 2.03,
+      "end_ts": 2.53,
+      "duration_s": 0.5,
       "track_ids": [
-        17,
-        25
+        18
       ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (2.43 H/s <= walking limit)",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.53s across 1.6H",
       "metrics": {
-        "duration_s": 2.53,
-        "eff_dist_h": 16.83,
-        "median_speed_h_s": 2.43,
-        "votes": {
-          "mounted": 14,
-          "dismounted": 62,
-          "unknown": 0
-        }
+        "duration_s": 0.53,
+        "disp_h": 1.55,
+        "median_speed_h_s": 2.76
       },
       "evidence_frames": [
-        115,
-        152,
-        190
+        61,
+        68,
+        76
       ]
     },
     {
       "id": "EV-06",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 130,
-      "end_frame": 146,
-      "start_ts": 4.33,
-      "end_ts": 4.87,
-      "duration_s": 0.54,
+      "verdict": "SUSPECTED",
+      "start_frame": 64,
+      "end_frame": 159,
+      "start_ts": 2.13,
+      "end_ts": 5.3,
+      "duration_s": 3.17,
       "track_ids": [
-        30
+        19
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.57s across 2.5H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 3.20s across 6.2H",
       "metrics": {
-        "duration_s": 0.57,
-        "disp_h": 2.54,
-        "median_speed_h_s": 5.25
+        "duration_s": 3.2,
+        "disp_h": 6.17,
+        "median_speed_h_s": 1.55
       },
       "evidence_frames": [
-        130,
-        138,
-        146
+        64,
+        111,
+        159
       ]
     },
     {
       "id": "EV-07",
       "event_type": "WRONG_WAY",
-      "verdict": "SUSPECTED",
-      "start_frame": 136,
-      "end_frame": 162,
-      "start_ts": 4.53,
-      "end_ts": 5.4,
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 69,
+      "end_frame": 95,
+      "start_ts": 2.3,
+      "end_ts": 3.17,
       "duration_s": 0.87,
       "track_ids": [
-        11
+        4,
+        14
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.85,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.90s across 5.4H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.57s across 1.8H",
       "metrics": {
-        "duration_s": 0.9,
-        "disp_h": 5.44,
-        "median_speed_h_s": 7.2
+        "duration_s": 0.57,
+        "disp_h": 1.76,
+        "median_speed_h_s": 2.9
       },
       "evidence_frames": [
-        136,
-        149,
-        162
+        69,
+        82,
+        95
       ]
     },
     {
       "id": "EV-08",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 136,
-      "end_frame": 152,
-      "start_ts": 4.53,
-      "end_ts": 5.07,
-      "duration_s": 0.54,
+      "verdict": "SUSPECTED",
+      "start_frame": 86,
+      "end_frame": 178,
+      "start_ts": 2.87,
+      "end_ts": 5.93,
+      "duration_s": 3.06,
       "track_ids": [
-        32
+        20
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.57s across 4.6H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 3.10s across 9.4H",
       "metrics": {
-        "duration_s": 0.57,
-        "disp_h": 4.65,
-        "median_speed_h_s": 8.54
+        "duration_s": 3.1,
+        "disp_h": 9.38,
+        "median_speed_h_s": 2.42
       },
       "evidence_frames": [
-        136,
-        144,
-        152
+        86,
+        132,
+        178
       ]
     },
     {
       "id": "EV-09",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 146,
-      "end_frame": 183,
-      "start_ts": 4.87,
-      "end_ts": 6.1,
-      "duration_s": 1.23,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 96,
+      "end_frame": 226,
+      "start_ts": 3.2,
+      "end_ts": 7.53,
+      "duration_s": 4.33,
       "track_ids": [
-        29,
-        31
+        18
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (9.62 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 4.37s across 11.0H",
       "metrics": {
-        "duration_s": 0.87,
-        "eff_dist_h": 8.12,
-        "median_speed_h_s": 9.62,
-        "votes": {
-          "mounted": 4,
-          "dismounted": 22,
-          "unknown": 0
-        }
+        "duration_s": 4.37,
+        "disp_h": 11.04,
+        "median_speed_h_s": 2.1
       },
       "evidence_frames": [
-        146,
-        164,
-        183
+        96,
+        161,
+        226
       ]
     },
     {
       "id": "EV-10",
-      "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 154,
-      "end_frame": 170,
-      "start_ts": 5.13,
-      "end_ts": 5.67,
-      "duration_s": 0.54,
+      "event_type": "EXEMPT_WALKING",
+      "verdict": "EXEMPT_WALKING",
+      "start_frame": 124,
+      "end_frame": 181,
+      "start_ts": 4.13,
+      "end_ts": 6.03,
+      "duration_s": 1.9,
       "track_ids": [
-        31
+        15,
+        19,
+        20
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.57s across 3.3H",
+      "zone_id": "crosswalk_top",
+      "confidence": 0.85,
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.38 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.57,
-        "disp_h": 3.32,
-        "median_speed_h_s": 5.59
+        "duration_s": 1.57,
+        "eff_dist_h": 4.08,
+        "median_speed_h_s": 1.38,
+        "votes": {
+          "mounted": 20,
+          "dismounted": 27,
+          "unknown": 0
+        }
       },
       "evidence_frames": [
-        154,
-        162,
-        170
+        124,
+        152,
+        181
       ]
     },
     {
       "id": "EV-11",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 167,
-      "end_frame": 179,
-      "start_ts": 5.57,
-      "end_ts": 5.97,
-      "duration_s": 0.4,
+      "start_frame": 171,
+      "end_frame": 224,
+      "start_ts": 5.7,
+      "end_ts": 7.47,
+      "duration_s": 1.77,
       "track_ids": [
-        27
+        22
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (4.59 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.17 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.43,
-        "eff_dist_h": 1.71,
-        "median_speed_h_s": 4.59,
+        "duration_s": 1.8,
+        "eff_dist_h": 1.99,
+        "median_speed_h_s": 1.17,
         "votes": {
           "mounted": 0,
-          "dismounted": 13,
+          "dismounted": 54,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        167,
-        173,
-        179
+        171,
+        197,
+        224
       ]
     },
     {
       "id": "EV-12",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 167,
-      "end_frame": 202,
-      "start_ts": 5.57,
-      "end_ts": 6.73,
-      "duration_s": 1.16,
+      "start_frame": 173,
+      "end_frame": 198,
+      "start_ts": 5.77,
+      "end_ts": 6.6,
+      "duration_s": 0.83,
       "track_ids": [
-        34
+        18
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (6.38 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (4.14 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 1.2,
-        "eff_dist_h": 5.39,
-        "median_speed_h_s": 6.38,
+        "duration_s": 0.87,
+        "eff_dist_h": 6.18,
+        "median_speed_h_s": 4.14,
         "votes": {
           "mounted": 0,
-          "dismounted": 36,
+          "dismounted": 26,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        167,
-        184,
-        202
+        173,
+        185,
+        198
       ]
     },
     {
       "id": "EV-13",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 168,
-      "end_frame": 225,
-      "start_ts": 5.6,
-      "end_ts": 7.5,
-      "duration_s": 1.9,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 190,
+      "end_frame": 211,
+      "start_ts": 6.33,
+      "end_ts": 7.03,
+      "duration_s": 0.7,
       "track_ids": [
-        14,
-        30
+        3
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.10 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.73s across 1.2H",
       "metrics": {
-        "duration_s": 1.87,
-        "eff_dist_h": 1.96,
-        "median_speed_h_s": 1.1,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 56,
-          "unknown": 0
-        }
+        "duration_s": 0.73,
+        "disp_h": 1.15,
+        "median_speed_h_s": 1.53
       },
       "evidence_frames": [
-        168,
-        196,
-        225
+        190,
+        200,
+        211
       ]
     },
     {
       "id": "EV-14",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 177,
-      "end_frame": 191,
-      "start_ts": 5.9,
-      "end_ts": 6.37,
-      "duration_s": 0.47,
+      "verdict": "SUSPECTED",
+      "start_frame": 211,
+      "end_frame": 346,
+      "start_ts": 7.03,
+      "end_ts": 11.53,
+      "duration_s": 4.5,
       "track_ids": [
-        34
+        25
       ],
-      "zone_id": "auto_lane_left_northbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.50s across 3.5H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 4.53s across 9.0H",
       "metrics": {
-        "duration_s": 0.5,
-        "disp_h": 3.55,
-        "median_speed_h_s": 6.58
+        "duration_s": 4.53,
+        "disp_h": 9.02,
+        "median_speed_h_s": 1.59
       },
       "evidence_frames": [
-        177,
-        184,
-        191
+        211,
+        278,
+        346
       ]
     },
     {
       "id": "EV-15",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 218,
-      "end_frame": 237,
-      "start_ts": 7.27,
-      "end_ts": 7.9,
-      "duration_s": 0.63,
+      "event_type": "WRONG_WAY",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 263,
+      "end_frame": 280,
+      "start_ts": 8.77,
+      "end_ts": 9.33,
+      "duration_s": 0.56,
       "track_ids": [
-        38
+        15
       ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (0.88 H/s <= walking limit)",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.60s across 0.7H",
       "metrics": {
-        "duration_s": 0.67,
-        "eff_dist_h": 1.51,
-        "median_speed_h_s": 0.88,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 20,
-          "unknown": 0
-        }
+        "duration_s": 0.6,
+        "disp_h": 0.7,
+        "median_speed_h_s": 1.39
       },
       "evidence_frames": [
-        218,
-        227,
-        237
+        263,
+        271,
+        280
       ]
     },
     {
       "id": "EV-16",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 260,
-      "end_frame": 350,
-      "start_ts": 8.67,
-      "end_ts": 11.67,
-      "duration_s": 3.0,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 267,
+      "end_frame": 372,
+      "start_ts": 8.9,
+      "end_ts": 12.4,
+      "duration_s": 3.5,
       "track_ids": [
-        41
+        31
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.42 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 3.53s across 6.9H",
       "metrics": {
-        "duration_s": 3.03,
-        "eff_dist_h": 5.69,
-        "median_speed_h_s": 1.42,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 91,
-          "unknown": 0
-        }
+        "duration_s": 3.53,
+        "disp_h": 6.86,
+        "median_speed_h_s": 1.67
       },
       "evidence_frames": [
-        260,
-        305,
-        350
+        267,
+        319,
+        372
       ]
     },
     {
       "id": "EV-17",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 263,
-      "end_frame": 286,
-      "start_ts": 8.77,
-      "end_ts": 9.53,
-      "duration_s": 0.76,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 284,
+      "end_frame": 347,
+      "start_ts": 9.47,
+      "end_ts": 11.57,
+      "duration_s": 2.1,
       "track_ids": [
-        42
+        33
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.63 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 2.13s across 5.6H",
       "metrics": {
-        "duration_s": 0.8,
-        "eff_dist_h": 1.71,
-        "median_speed_h_s": 1.63,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 24,
-          "unknown": 0
-        }
+        "duration_s": 2.13,
+        "disp_h": 5.56,
+        "median_speed_h_s": 2.64
       },
       "evidence_frames": [
-        263,
-        274,
-        286
+        284,
+        315,
+        347
       ]
     },
     {
       "id": "EV-18",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 289,
-      "end_frame": 340,
-      "start_ts": 9.63,
-      "end_ts": 11.33,
-      "duration_s": 1.7,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 286,
+      "end_frame": 335,
+      "start_ts": 9.53,
+      "end_ts": 11.17,
+      "duration_s": 1.64,
       "track_ids": [
-        39,
-        40
+        34
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.28 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.67s across 4.3H",
       "metrics": {
-        "duration_s": 1.73,
-        "eff_dist_h": 1.79,
-        "median_speed_h_s": 1.28,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 52,
-          "unknown": 0
-        }
+        "duration_s": 1.67,
+        "disp_h": 4.32,
+        "median_speed_h_s": 2.19
       },
       "evidence_frames": [
-        289,
-        314,
-        340
+        286,
+        310,
+        335
       ]
     },
     {
       "id": "EV-19",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 311,
-      "end_frame": 344,
-      "start_ts": 10.37,
-      "end_ts": 11.47,
-      "duration_s": 1.1,
+      "start_frame": 289,
+      "end_frame": 387,
+      "start_ts": 9.63,
+      "end_ts": 12.9,
+      "duration_s": 3.27,
       "track_ids": [
-        53,
-        58
+        25
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.05 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.16 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.53,
-        "eff_dist_h": 1.01,
-        "median_speed_h_s": 1.05,
+        "duration_s": 3.3,
+        "eff_dist_h": 4.63,
+        "median_speed_h_s": 1.16,
         "votes": {
           "mounted": 0,
-          "dismounted": 16,
+          "dismounted": 99,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        311,
-        327,
-        344
+        289,
+        338,
+        387
       ]
     },
     {
       "id": "EV-20",
-      "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 332,
-      "end_frame": 351,
-      "start_ts": 11.07,
-      "end_ts": 11.7,
-      "duration_s": 0.63,
+      "event_type": "EXEMPT_WALKING",
+      "verdict": "EXEMPT_WALKING",
+      "start_frame": 291,
+      "end_frame": 350,
+      "start_ts": 9.7,
+      "end_ts": 11.67,
+      "duration_s": 1.97,
       "track_ids": [
-        58
+        18
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.67s across 3.3H",
+      "zone_id": "crosswalk_top",
+      "confidence": 0.85,
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.17 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.67,
-        "disp_h": 3.29,
-        "median_speed_h_s": 5.48
+        "duration_s": 2.0,
+        "eff_dist_h": 2.32,
+        "median_speed_h_s": 1.17,
+        "votes": {
+          "mounted": 0,
+          "dismounted": 60,
+          "unknown": 0
+        }
       },
       "evidence_frames": [
-        332,
-        341,
-        351
+        291,
+        320,
+        350
       ]
     },
     {
       "id": "EV-21",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 350,
-      "end_frame": 364,
-      "start_ts": 11.67,
-      "end_ts": 12.13,
-      "duration_s": 0.46,
+      "verdict": "SUSPECTED",
+      "start_frame": 317,
+      "end_frame": 349,
+      "start_ts": 10.57,
+      "end_ts": 11.63,
+      "duration_s": 1.06,
       "track_ids": [
-        53
+        37
       ],
-      "zone_id": "auto_lane_left_northbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.50s across 2.9H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.10s across 6.5H",
       "metrics": {
-        "duration_s": 0.5,
-        "disp_h": 2.86,
-        "median_speed_h_s": 6.13
+        "duration_s": 1.1,
+        "disp_h": 6.53,
+        "median_speed_h_s": 3.38
       },
       "evidence_frames": [
-        350,
-        357,
-        364
+        317,
+        333,
+        349
       ]
     },
     {
       "id": "EV-22",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 353,
-      "end_frame": 456,
-      "start_ts": 11.77,
-      "end_ts": 15.2,
-      "duration_s": 3.43,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 327,
+      "end_frame": 373,
+      "start_ts": 10.9,
+      "end_ts": 12.43,
+      "duration_s": 1.53,
       "track_ids": [
-        53
+        39
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.05 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.57s across 5.3H",
       "metrics": {
-        "duration_s": 3.47,
-        "eff_dist_h": 6.38,
-        "median_speed_h_s": 1.05,
-        "votes": {
-          "mounted": 1,
-          "dismounted": 103,
-          "unknown": 0
-        }
+        "duration_s": 1.57,
+        "disp_h": 5.35,
+        "median_speed_h_s": 2.98
       },
       "evidence_frames": [
-        353,
-        404,
-        456
+        327,
+        350,
+        373
       ]
     },
     {
       "id": "EV-23",
       "event_type": "WRONG_WAY",
       "verdict": "SUSPECTED",
-      "start_frame": 354,
-      "end_frame": 384,
-      "start_ts": 11.8,
-      "end_ts": 12.8,
-      "duration_s": 1.0,
+      "start_frame": 353,
+      "end_frame": 403,
+      "start_ts": 11.77,
+      "end_ts": 13.43,
+      "duration_s": 1.66,
       "track_ids": [
-        39
+        34
       ],
-      "zone_id": "auto_lane_left_northbound",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 1.03s across 3.4H",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.70s across 4.2H",
       "metrics": {
-        "duration_s": 1.03,
-        "disp_h": 3.43,
-        "median_speed_h_s": 3.18
+        "duration_s": 1.7,
+        "disp_h": 4.17,
+        "median_speed_h_s": 3.58
       },
       "evidence_frames": [
-        354,
-        369,
-        384
+        353,
+        378,
+        403
       ]
     },
     {
       "id": "EV-24",
-      "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 354,
-      "end_frame": 371,
-      "start_ts": 11.8,
-      "end_ts": 12.37,
-      "duration_s": 0.57,
+      "event_type": "EXEMPT_WALKING",
+      "verdict": "EXEMPT_WALKING",
+      "start_frame": 357,
+      "end_frame": 381,
+      "start_ts": 11.9,
+      "end_ts": 12.7,
+      "duration_s": 0.8,
       "track_ids": [
-        60,
-        66
+        31
       ],
-      "zone_id": "auto_lane_left_northbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.60s across 2.5H",
+      "zone_id": "crosswalk_top",
+      "confidence": 0.85,
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.09 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.6,
-        "disp_h": 2.54,
-        "median_speed_h_s": 4.44
+        "duration_s": 0.83,
+        "eff_dist_h": 1.13,
+        "median_speed_h_s": 1.09,
+        "votes": {
+          "mounted": 0,
+          "dismounted": 25,
+          "unknown": 0
+        }
       },
       "evidence_frames": [
-        354,
-        362,
-        371
+        357,
+        369,
+        381
       ]
     },
     {
       "id": "EV-25",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 362,
-      "end_frame": 437,
-      "start_ts": 12.07,
-      "end_ts": 14.57,
-      "duration_s": 2.5,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 357,
+      "end_frame": 387,
+      "start_ts": 11.9,
+      "end_ts": 12.9,
+      "duration_s": 1.0,
       "track_ids": [
-        39,
-        60,
-        69
+        10
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (4.71 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.03s across 5.2H",
       "metrics": {
-        "duration_s": 0.63,
-        "eff_dist_h": 2.43,
-        "median_speed_h_s": 4.71,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 19,
-          "unknown": 0
-        }
+        "duration_s": 1.03,
+        "disp_h": 5.19,
+        "median_speed_h_s": 3.17
       },
       "evidence_frames": [
-        362,
-        399,
-        437
+        357,
+        372,
+        387
       ]
     },
     {
       "id": "EV-26",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 408,
-      "end_frame": 469,
-      "start_ts": 13.6,
-      "end_ts": 15.63,
-      "duration_s": 2.03,
+      "event_type": "WRONG_WAY",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 363,
+      "end_frame": 379,
+      "start_ts": 12.1,
+      "end_ts": 12.63,
+      "duration_s": 0.53,
       "track_ids": [
-        66,
-        73
+        33
       ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (7.28 H/s <= walking limit)",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.57s across 4.4H",
       "metrics": {
-        "duration_s": 0.43,
-        "eff_dist_h": 3.06,
-        "median_speed_h_s": 7.28,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 13,
-          "unknown": 0
-        }
+        "duration_s": 0.57,
+        "disp_h": 4.38,
+        "median_speed_h_s": 7.27
       },
       "evidence_frames": [
-        408,
-        438,
-        469
+        363,
+        371,
+        379
       ]
     },
     {
       "id": "EV-27",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 431,
-      "end_frame": 473,
-      "start_ts": 14.37,
-      "end_ts": 15.77,
-      "duration_s": 1.4,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 372,
+      "end_frame": 411,
+      "start_ts": 12.4,
+      "end_ts": 13.7,
+      "duration_s": 1.3,
       "track_ids": [
-        67,
-        78
+        35
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.18 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.33s across 6.6H",
       "metrics": {
-        "duration_s": 1.43,
-        "eff_dist_h": 4.04,
-        "median_speed_h_s": 1.18,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 43,
-          "unknown": 0
-        }
+        "duration_s": 1.33,
+        "disp_h": 6.6,
+        "median_speed_h_s": 3.26
       },
       "evidence_frames": [
-        431,
-        452,
-        473
+        372,
+        391,
+        411
       ]
     },
     {
       "id": "EV-28",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 432,
-      "end_frame": 525,
-      "start_ts": 14.4,
-      "end_ts": 17.5,
-      "duration_s": 3.1,
+      "start_frame": 386,
+      "end_frame": 493,
+      "start_ts": 12.87,
+      "end_ts": 16.43,
+      "duration_s": 3.56,
       "track_ids": [
-        73
+        29
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.59 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.20 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 3.13,
-        "eff_dist_h": 8.13,
-        "median_speed_h_s": 1.59,
+        "duration_s": 3.6,
+        "eff_dist_h": 10.3,
+        "median_speed_h_s": 1.2,
         "votes": {
-          "mounted": 2,
-          "dismounted": 92,
+          "mounted": 0,
+          "dismounted": 108,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        432,
-        478,
-        525
+        386,
+        439,
+        493
       ]
     },
     {
       "id": "EV-29",
       "event_type": "WRONG_WAY",
       "verdict": "SUSPECTED",
-      "start_frame": 441,
-      "end_frame": 466,
-      "start_ts": 14.7,
-      "end_ts": 15.53,
-      "duration_s": 0.83,
+      "start_frame": 389,
+      "end_frame": 450,
+      "start_ts": 12.97,
+      "end_ts": 15.0,
+      "duration_s": 2.03,
       "track_ids": [
-        78
+        29,
+        39
       ],
-      "zone_id": "auto_lane_left_northbound",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.87s across 3.8H",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 2.07s across 5.1H",
       "metrics": {
-        "duration_s": 0.87,
-        "disp_h": 3.81,
-        "median_speed_h_s": 5.2
+        "duration_s": 2.07,
+        "disp_h": 5.07,
+        "median_speed_h_s": 1.27
       },
       "evidence_frames": [
-        441,
-        453,
-        466
+        389,
+        419,
+        450
       ]
     },
     {
       "id": "EV-30",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 445,
-      "end_frame": 500,
-      "start_ts": 14.83,
-      "end_ts": 16.67,
-      "duration_s": 1.84,
+      "start_frame": 396,
+      "end_frame": 508,
+      "start_ts": 13.2,
+      "end_ts": 16.93,
+      "duration_s": 3.73,
       "track_ids": [
-        77
+        31,
+        34,
+        35,
+        39,
+        43
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.32 H/s <= walking limit)",
-      "metrics": {
-        "duration_s": 1.87,
-        "eff_dist_h": 2.44,
-        "median_speed_h_s": 1.32,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 56,
-          "unknown": 0
-        }
-      },
-      "evidence_frames": [
-        445,
-        472,
-        500
-      ]
-    },
-    {
-      "id": "EV-31",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 446,
-      "end_frame": 497,
-      "start_ts": 14.87,
-      "end_ts": 16.57,
-      "duration_s": 1.7,
-      "track_ids": [
-        58
-      ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.20 H/s <= walking limit)",
-      "metrics": {
-        "duration_s": 1.73,
-        "eff_dist_h": 6.17,
-        "median_speed_h_s": 1.2,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 52,
-          "unknown": 0
-        }
-      },
-      "evidence_frames": [
-        446,
-        471,
-        497
-      ]
-    },
-    {
-      "id": "EV-32",
-      "event_type": "WRONG_WAY",
-      "verdict": "SUSPECTED",
-      "start_frame": 462,
-      "end_frame": 489,
-      "start_ts": 15.4,
-      "end_ts": 16.3,
-      "duration_s": 0.9,
-      "track_ids": [
-        82
-      ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.85,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.93s across 1.2H",
-      "metrics": {
-        "duration_s": 0.93,
-        "disp_h": 1.22,
-        "median_speed_h_s": 1.62
-      },
-      "evidence_frames": [
-        462,
-        475,
-        489
-      ]
-    },
-    {
-      "id": "EV-33",
-      "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 465,
-      "end_frame": 480,
-      "start_ts": 15.5,
-      "end_ts": 16.0,
-      "duration_s": 0.5,
-      "track_ids": [
-        67
-      ],
-      "zone_id": "auto_lane_left_northbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.53s across 3.3H",
-      "metrics": {
-        "duration_s": 0.53,
-        "disp_h": 3.3,
-        "median_speed_h_s": 6.26
-      },
-      "evidence_frames": [
-        465,
-        472,
-        480
-      ]
-    },
-    {
-      "id": "EV-34",
-      "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 484,
-      "end_frame": 499,
-      "start_ts": 16.13,
-      "end_ts": 16.63,
-      "duration_s": 0.5,
-      "track_ids": [
-        73
-      ],
-      "zone_id": "auto_lane_left_northbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.53s across 3.3H",
-      "metrics": {
-        "duration_s": 0.53,
-        "disp_h": 3.25,
-        "median_speed_h_s": 5.39
-      },
-      "evidence_frames": [
-        484,
-        491,
-        499
-      ]
-    },
-    {
-      "id": "EV-35",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 486,
-      "end_frame": 522,
-      "start_ts": 16.2,
-      "end_ts": 17.4,
-      "duration_s": 1.2,
-      "track_ids": [
-        85
-      ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (6.46 H/s <= walking limit)",
-      "metrics": {
-        "duration_s": 1.23,
-        "eff_dist_h": 6.41,
-        "median_speed_h_s": 6.46,
-        "votes": {
-          "mounted": 5,
-          "dismounted": 32,
-          "unknown": 0
-        }
-      },
-      "evidence_frames": [
-        486,
-        504,
-        522
-      ]
-    },
-    {
-      "id": "EV-36",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 494,
-      "end_frame": 511,
-      "start_ts": 16.47,
-      "end_ts": 17.03,
-      "duration_s": 0.56,
-      "track_ids": [
-        53
-      ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.31 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (5.51 H/s <= walking limit)",
       "metrics": {
         "duration_s": 0.6,
-        "eff_dist_h": 0.83,
-        "median_speed_h_s": 1.31,
+        "eff_dist_h": 2.16,
+        "median_speed_h_s": 5.51,
         "votes": {
           "mounted": 0,
           "dismounted": 18,
@@ -1056,280 +835,620 @@
         }
       },
       "evidence_frames": [
-        494,
-        502,
-        511
+        396,
+        452,
+        508
+      ]
+    },
+    {
+      "id": "EV-31",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 400,
+      "end_frame": 432,
+      "start_ts": 13.33,
+      "end_ts": 14.4,
+      "duration_s": 1.07,
+      "track_ids": [
+        31
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.10s across 1.6H",
+      "metrics": {
+        "duration_s": 1.1,
+        "disp_h": 1.62,
+        "median_speed_h_s": 1.46
+      },
+      "evidence_frames": [
+        400,
+        416,
+        432
+      ]
+    },
+    {
+      "id": "EV-32",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 404,
+      "end_frame": 452,
+      "start_ts": 13.47,
+      "end_ts": 15.07,
+      "duration_s": 1.6,
+      "track_ids": [
+        42
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.63s across 4.7H",
+      "metrics": {
+        "duration_s": 1.63,
+        "disp_h": 4.7,
+        "median_speed_h_s": 2.23
+      },
+      "evidence_frames": [
+        404,
+        428,
+        452
+      ]
+    },
+    {
+      "id": "EV-33",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 417,
+      "end_frame": 513,
+      "start_ts": 13.9,
+      "end_ts": 17.1,
+      "duration_s": 3.2,
+      "track_ids": [
+        45
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 3.23s across 8.5H",
+      "metrics": {
+        "duration_s": 3.23,
+        "disp_h": 8.51,
+        "median_speed_h_s": 2.9
+      },
+      "evidence_frames": [
+        417,
+        465,
+        513
+      ]
+    },
+    {
+      "id": "EV-34",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 426,
+      "end_frame": 496,
+      "start_ts": 14.2,
+      "end_ts": 16.53,
+      "duration_s": 2.33,
+      "track_ids": [
+        29,
+        46
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.30s across 7.8H",
+      "metrics": {
+        "duration_s": 1.3,
+        "disp_h": 7.84,
+        "median_speed_h_s": 5.63
+      },
+      "evidence_frames": [
+        426,
+        461,
+        496
+      ]
+    },
+    {
+      "id": "EV-35",
+      "event_type": "EXEMPT_WALKING",
+      "verdict": "EXEMPT_WALKING",
+      "start_frame": 446,
+      "end_frame": 500,
+      "start_ts": 14.87,
+      "end_ts": 16.67,
+      "duration_s": 1.8,
+      "track_ids": [
+        7,
+        48
+      ],
+      "zone_id": "crosswalk_top",
+      "confidence": 0.85,
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.35 H/s <= walking limit)",
+      "metrics": {
+        "duration_s": 1.83,
+        "eff_dist_h": 2.43,
+        "median_speed_h_s": 1.35,
+        "votes": {
+          "mounted": 0,
+          "dismounted": 55,
+          "unknown": 0
+        }
+      },
+      "evidence_frames": [
+        446,
+        473,
+        500
+      ]
+    },
+    {
+      "id": "EV-36",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 447,
+      "end_frame": 538,
+      "start_ts": 14.9,
+      "end_ts": 17.93,
+      "duration_s": 3.03,
+      "track_ids": [
+        31
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 3.07s across 2.3H",
+      "metrics": {
+        "duration_s": 3.07,
+        "disp_h": 2.3,
+        "median_speed_h_s": 0.8
+      },
+      "evidence_frames": [
+        447,
+        492,
+        538
       ]
     },
     {
       "id": "EV-37",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 494,
-      "end_frame": 526,
-      "start_ts": 16.47,
-      "end_ts": 17.53,
-      "duration_s": 1.06,
+      "event_type": "WRONG_WAY",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 463,
+      "end_frame": 483,
+      "start_ts": 15.43,
+      "end_ts": 16.1,
+      "duration_s": 0.67,
       "track_ids": [
-        84,
-        87
+        43,
+        51
       ],
-      "zone_id": "crosswalk_top",
-      "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (3.09 H/s <= walking limit)",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.63s across 6.0H",
       "metrics": {
-        "duration_s": 1.1,
-        "eff_dist_h": 2.55,
-        "median_speed_h_s": 3.09,
-        "votes": {
-          "mounted": 2,
-          "dismounted": 31,
-          "unknown": 0
-        }
+        "duration_s": 0.63,
+        "disp_h": 5.99,
+        "median_speed_h_s": 3.68
       },
       "evidence_frames": [
-        494,
-        510,
-        526
+        463,
+        473,
+        483
       ]
     },
     {
       "id": "EV-38",
-      "event_type": "EXEMPT_WALKING",
-      "verdict": "EXEMPT_WALKING",
-      "start_frame": 505,
-      "end_frame": 535,
-      "start_ts": 16.83,
-      "end_ts": 17.83,
-      "duration_s": 1.0,
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 483,
+      "end_frame": 552,
+      "start_ts": 16.1,
+      "end_ts": 18.4,
+      "duration_s": 2.3,
       "track_ids": [
-        89
+        39
       ],
-      "zone_id": "crosswalk_top",
+      "zone_id": "auto_lane_oneway",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (4.29 H/s <= walking limit)",
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 2.33s across 5.5H",
       "metrics": {
-        "duration_s": 1.03,
-        "eff_dist_h": 5.54,
-        "median_speed_h_s": 4.29,
-        "votes": {
-          "mounted": 0,
-          "dismounted": 31,
-          "unknown": 0
-        }
+        "duration_s": 2.33,
+        "disp_h": 5.53,
+        "median_speed_h_s": 1.1
       },
       "evidence_frames": [
-        505,
-        520,
-        535
+        483,
+        517,
+        552
       ]
     },
     {
       "id": "EV-39",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 513,
-      "end_frame": 574,
-      "start_ts": 17.1,
-      "end_ts": 19.13,
-      "duration_s": 2.03,
+      "start_frame": 484,
+      "end_frame": 512,
+      "start_ts": 16.13,
+      "end_ts": 17.07,
+      "duration_s": 0.94,
       "track_ids": [
-        76,
-        77,
-        91
+        45
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (2.78 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (2.39 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.63,
-        "eff_dist_h": 1.52,
-        "median_speed_h_s": 2.78,
+        "duration_s": 0.97,
+        "eff_dist_h": 3.36,
+        "median_speed_h_s": 2.39,
         "votes": {
-          "mounted": 0,
-          "dismounted": 19,
+          "mounted": 1,
+          "dismounted": 28,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        513,
-        543,
-        574
+        484,
+        498,
+        512
       ]
     },
     {
       "id": "EV-40",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 517,
-      "end_frame": 533,
-      "start_ts": 17.23,
-      "end_ts": 17.77,
-      "duration_s": 0.54,
+      "verdict": "SUSPECTED",
+      "start_frame": 495,
+      "end_frame": 556,
+      "start_ts": 16.5,
+      "end_ts": 18.53,
+      "duration_s": 2.03,
       "track_ids": [
-        67
+        55
       ],
-      "zone_id": "auto_lane_left_northbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_left_northbound for 0.57s across 2.2H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 2.07s across 2.8H",
       "metrics": {
-        "duration_s": 0.57,
-        "disp_h": 2.22,
-        "median_speed_h_s": 3.35
+        "duration_s": 2.07,
+        "disp_h": 2.8,
+        "median_speed_h_s": 1.42
       },
       "evidence_frames": [
-        517,
+        495,
         525,
-        533
+        556
       ]
     },
     {
       "id": "EV-41",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 525,
-      "end_frame": 547,
-      "start_ts": 17.5,
-      "end_ts": 18.23,
-      "duration_s": 0.73,
+      "start_frame": 496,
+      "end_frame": 534,
+      "start_ts": 16.53,
+      "end_ts": 17.8,
+      "duration_s": 1.27,
       "track_ids": [
-        67
+        7
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (3.81 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (0.67 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 0.77,
-        "eff_dist_h": 2.04,
-        "median_speed_h_s": 3.81,
+        "duration_s": 1.3,
+        "eff_dist_h": 1.11,
+        "median_speed_h_s": 0.67,
         "votes": {
           "mounted": 0,
-          "dismounted": 23,
+          "dismounted": 39,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        525,
-        536,
-        547
+        496,
+        515,
+        534
       ]
     },
     {
       "id": "EV-42",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 536,
-      "end_frame": 582,
-      "start_ts": 17.87,
-      "end_ts": 19.4,
-      "duration_s": 1.53,
+      "start_frame": 503,
+      "end_frame": 555,
+      "start_ts": 16.77,
+      "end_ts": 18.5,
+      "duration_s": 1.73,
       "track_ids": [
-        84,
-        95
+        29,
+        55
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (2.03 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.27 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 1.27,
-        "eff_dist_h": 1.97,
-        "median_speed_h_s": 2.03,
+        "duration_s": 1.77,
+        "eff_dist_h": 4.4,
+        "median_speed_h_s": 1.27,
         "votes": {
           "mounted": 0,
-          "dismounted": 38,
+          "dismounted": 53,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        536,
-        559,
-        582
+        503,
+        529,
+        555
       ]
     },
     {
       "id": "EV-43",
       "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 574,
-      "end_frame": 588,
-      "start_ts": 19.13,
-      "end_ts": 19.6,
-      "duration_s": 0.47,
+      "verdict": "SUSPECTED",
+      "start_frame": 511,
+      "end_frame": 537,
+      "start_ts": 17.03,
+      "end_ts": 17.9,
+      "duration_s": 0.87,
       "track_ids": [
-        92
+        56
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.50s across 1.8H",
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.90s across 1.7H",
       "metrics": {
-        "duration_s": 0.5,
-        "disp_h": 1.83,
-        "median_speed_h_s": 3.92
+        "duration_s": 0.9,
+        "disp_h": 1.66,
+        "median_speed_h_s": 1.77
       },
       "evidence_frames": [
-        574,
-        581,
-        588
+        511,
+        524,
+        537
       ]
     },
     {
       "id": "EV-44",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 516,
+      "end_frame": 544,
+      "start_ts": 17.2,
+      "end_ts": 18.13,
+      "duration_s": 0.93,
+      "track_ids": [
+        29
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.97s across 2.2H",
+      "metrics": {
+        "duration_s": 0.97,
+        "disp_h": 2.18,
+        "median_speed_h_s": 0.99
+      },
+      "evidence_frames": [
+        516,
+        530,
+        544
+      ]
+    },
+    {
+      "id": "EV-45",
       "event_type": "EXEMPT_WALKING",
       "verdict": "EXEMPT_WALKING",
-      "start_frame": 613,
-      "end_frame": 687,
-      "start_ts": 20.43,
-      "end_ts": 22.9,
-      "duration_s": 2.47,
+      "start_frame": 520,
+      "end_frame": 573,
+      "start_ts": 17.33,
+      "end_ts": 19.1,
+      "duration_s": 1.77,
       "track_ids": [
-        100,
-        103,
-        104,
-        107
+        56
       ],
       "zone_id": "crosswalk_top",
       "confidence": 0.85,
-      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.68 H/s <= walking limit)",
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (0.89 H/s <= walking limit)",
       "metrics": {
-        "duration_s": 1.63,
-        "eff_dist_h": 2.69,
-        "median_speed_h_s": 1.68,
+        "duration_s": 1.8,
+        "eff_dist_h": 1.53,
+        "median_speed_h_s": 0.89,
         "votes": {
-          "mounted": 22,
+          "mounted": 14,
+          "dismounted": 40,
+          "unknown": 0
+        }
+      },
+      "evidence_frames": [
+        520,
+        546,
+        573
+      ]
+    },
+    {
+      "id": "EV-46",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 544,
+      "end_frame": 575,
+      "start_ts": 18.13,
+      "end_ts": 19.17,
+      "duration_s": 1.04,
+      "track_ids": [
+        57
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.07s across 2.9H",
+      "metrics": {
+        "duration_s": 1.07,
+        "disp_h": 2.93,
+        "median_speed_h_s": 0.86
+      },
+      "evidence_frames": [
+        544,
+        559,
+        575
+      ]
+    },
+    {
+      "id": "EV-47",
+      "event_type": "WRONG_WAY",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 556,
+      "end_frame": 591,
+      "start_ts": 18.53,
+      "end_ts": 19.7,
+      "duration_s": 1.17,
+      "track_ids": [
+        31
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 1.20s across 0.8H",
+      "metrics": {
+        "duration_s": 1.2,
+        "disp_h": 0.81,
+        "median_speed_h_s": 0.69
+      },
+      "evidence_frames": [
+        556,
+        573,
+        591
+      ]
+    },
+    {
+      "id": "EV-48",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 566,
+      "end_frame": 589,
+      "start_ts": 18.87,
+      "end_ts": 19.63,
+      "duration_s": 0.76,
+      "track_ids": [
+        39
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.80s across 1.8H",
+      "metrics": {
+        "duration_s": 0.8,
+        "disp_h": 1.77,
+        "median_speed_h_s": 0.75
+      },
+      "evidence_frames": [
+        566,
+        577,
+        589
+      ]
+    },
+    {
+      "id": "EV-49",
+      "event_type": "EXEMPT_WALKING",
+      "verdict": "EXEMPT_WALKING",
+      "start_frame": 616,
+      "end_frame": 658,
+      "start_ts": 20.53,
+      "end_ts": 21.93,
+      "duration_s": 1.4,
+      "track_ids": [
+        57
+      ],
+      "zone_id": "crosswalk_top",
+      "confidence": 0.85,
+      "reason": "Dismounted person walking motorcycle across crosswalk_top (1.57 H/s <= walking limit)",
+      "metrics": {
+        "duration_s": 1.43,
+        "eff_dist_h": 2.38,
+        "median_speed_h_s": 1.57,
+        "votes": {
+          "mounted": 16,
           "dismounted": 27,
           "unknown": 0
         }
       },
       "evidence_frames": [
-        613,
-        650,
+        616,
+        637,
+        658
+      ]
+    },
+    {
+      "id": "EV-50",
+      "event_type": "WRONG_WAY",
+      "verdict": "SUSPECTED",
+      "start_frame": 619,
+      "end_frame": 687,
+      "start_ts": 20.63,
+      "end_ts": 22.9,
+      "duration_s": 2.27,
+      "track_ids": [
+        65
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.85,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 2.30s across 5.1H",
+      "metrics": {
+        "duration_s": 2.3,
+        "disp_h": 5.13,
+        "median_speed_h_s": 2.13
+      },
+      "evidence_frames": [
+        619,
+        653,
         687
       ]
     },
     {
-      "id": "EV-45",
-      "event_type": "WRONG_WAY",
-      "verdict": "INSUFFICIENT_EVIDENCE",
-      "start_frame": 652,
-      "end_frame": 667,
-      "start_ts": 21.73,
-      "end_ts": 22.23,
-      "duration_s": 0.5,
+      "id": "EV-51",
+      "event_type": "CROSSWALK_RIDING",
+      "verdict": "SUSPECTED",
+      "start_frame": 655,
+      "end_frame": 687,
+      "start_ts": 21.83,
+      "end_ts": 22.9,
+      "duration_s": 1.07,
       "track_ids": [
-        107
+        68
       ],
-      "zone_id": "auto_lane_right_southbound",
-      "confidence": 0.5,
-      "reason": "Vehicle moved counter-flow in auto_lane_right_southbound for 0.53s across 3.8H",
+      "zone_id": "crosswalk_top",
+      "confidence": 0.85,
+      "reason": "Mounted rider traversed crosswalk_top at 1.04 H/s across 1.1H",
       "metrics": {
-        "duration_s": 0.53,
-        "disp_h": 3.84,
-        "median_speed_h_s": 8.71
+        "duration_s": 1.1,
+        "eff_dist_h": 1.13,
+        "median_speed_h_s": 1.04,
+        "votes": {
+          "mounted": 19,
+          "dismounted": 14,
+          "unknown": 0
+        }
       },
       "evidence_frames": [
-        652,
-        659,
-        667
+        655,
+        671,
+        687
+      ]
+    },
+    {
+      "id": "EV-52",
+      "event_type": "WRONG_WAY",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "start_frame": 663,
+      "end_frame": 677,
+      "start_ts": 22.1,
+      "end_ts": 22.57,
+      "duration_s": 0.47,
+      "track_ids": [
+        71
+      ],
+      "zone_id": "auto_lane_oneway",
+      "confidence": 0.5,
+      "reason": "Vehicle moved counter-flow in auto_lane_oneway for 0.50s across 1.2H",
+      "metrics": {
+        "duration_s": 0.5,
+        "disp_h": 1.21,
+        "median_speed_h_s": 2.6
+      },
+      "evidence_frames": [
+        663,
+        670,
+        677
       ]
     }
   ]
