@@ -160,3 +160,4 @@ export function getExportUrl(format: 'json' | 'csv'): string {
 export function getVideoStreamUrl(videoName: string): string {
   return `${API_BASE}/videos/${encodeURIComponent(videoName)}/stream`
 }
+

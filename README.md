@@ -57,19 +57,38 @@ CCTV-Safety/
 
 ---
 
-## 🚀 Quickstart & Backend Execution
+## 🚀 Quickstart: Running Both Services Simultaneously
 
-### 1. Requirements
-- Python 3.10+
-- `uv` (Fast Python package installer and resolver)
-
-### 2. Setup with UV
-From the `backend/` directory:
-```bash
-cd backend
-uv venv
-uv pip install -e .
+### Option A: One-Command Local Startup (Recommended for Local Dev)
+Run the automated dual-server runner in PowerShell:
+```powershell
+.\start.ps1
 ```
+*(Or double-click `start.bat`)*
+
+This script automatically:
+1. Starts the FastAPI backend on `http://localhost:8000`
+2. Starts the Next.js frontend on `http://localhost:3000`
+3. Launches your default browser to `http://localhost:3000`
+4. Gracefully terminates both processes when you press Enter.
+
+---
+
+### Option B: Docker Compose (Technical Assignment Deliverable #3)
+Start both containerized services in production mode:
+```bash
+docker compose up --build
+```
+Once built and running:
+- **Dashboard UI**: `http://localhost:8080` (and `http://localhost:3000`)
+- **FastAPI API**: `http://localhost:8000`
+- **Swagger Documentation**: `http://localhost:8000/docs`
+
+> **GPU Acceleration**: To enable NVIDIA GPU acceleration inside the Docker container, ensure the NVIDIA Container Toolkit is installed and uncomment the `deploy.resources.reservations.devices` block in [`compose.yaml`](file:///f:/Projects/CCTV-Safety/compose.yaml).
+
+---
+
+## 💻 Manual Execution (Separate Terminals)
 
 ### 3. Run the FastAPI Server
 From within `backend/`:

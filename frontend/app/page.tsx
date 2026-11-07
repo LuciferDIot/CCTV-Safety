@@ -93,7 +93,7 @@ export default function DashboardPage() {
   // Poll telemetry every 2.5 seconds
   useEffect(() => {
     const loadTelem = () => {
-      fetchTelemetry().then(setTelemetry).catch(() => {})
+      fetchTelemetry().then(setTelemetry).catch(() => { })
     }
     loadTelem()
     const interval = setInterval(loadTelem, 2500)
