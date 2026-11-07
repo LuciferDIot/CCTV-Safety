@@ -20,6 +20,7 @@ def run_pipeline_inference(
     task: Dict[str, Any], cancel_event: threading.Event,
     settings: Settings, req: PipelineRunRequest, telemetry: TelemetryHUD
 ) -> None:
+    container, cap, tmp_path, out_path = None, None, None, None
     try:
         video_path = _resolve_video(settings, req.video_name)
         cap = cv2.VideoCapture(str(video_path))
@@ -34,8 +35,9 @@ def run_pipeline_inference(
         out_dir = settings.resolve(settings.output_dir)
         out_name = f"{video_path.stem}_annotated.mp4"
         out_path = out_dir / out_name
+        tmp_path = out_dir / f"{video_path.stem}_annotated.tmp.mp4"
 
-        container = av.open(str(out_path), mode="w")
+        container = av.open(str(tmp_path), mode="w", options={"movflags": "+faststart"})
         stream = container.add_stream("h264", rate=int(fps))
         stream.width, stream.height, stream.pix_fmt = width, height, "yuv420p"
 
@@ -64,21 +66,35 @@ def run_pipeline_inference(
             task["elapsed_seconds"] = elapsed
             task["fps"] = inst_fps
             task["eta_seconds"] = round((frames_to_run - (f_idx + 1)) / inst_fps, 1) if inst_fps > 0 else 0.0
-            total_evs = len(pipeline.event_verifier.active_events) + len(pipeline.event_verifier.completed_events)
-            task["events_detected"] = total_evs
-
-        if not cancel_event.is_set():
-            pipeline.finalize()
-            task["status"] = "completed"
-            task["progress_pct"] = 100.0
-            task["output_video"] = out_name
-            telemetry.fps = task["fps"]
-            telemetry.active_tracks = len(pipeline.tracker.tracks)
+            task["events_detected"] = len(pipeline.event_verifier.active_events) + len(pipeline.event_verifier.completed_events)
 
         for pkt in stream.encode():
             container.mux(pkt)
         container.close()
+        container = None
         cap.release()
+        cap = None
+
+        if not cancel_event.is_set():
+            if out_path.exists():
+                out_path.unlink()
+            tmp_path.rename(out_path)
+            pipeline.finalize()
+            task["output_video"] = out_name
+            task["progress_pct"] = 100.0
+            task["status"] = "completed"
+            telemetry.fps = task["fps"]
+            telemetry.active_tracks = len(pipeline.tracker.tracks)
+        else:
+            if tmp_path.exists():
+                tmp_path.unlink()
     except Exception as e:
         task["status"] = "failed"
         task["error"] = str(e)
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
+    finally:
+        if container is not None:
+            container.close()
+        if cap is not None:
+            cap.release()

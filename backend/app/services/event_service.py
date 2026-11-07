@@ -15,8 +15,11 @@ class EventService:
         self.evidence_cards_dir = settings.resolve(settings.evidence_cards_dir)
         self.events_dir = settings.resolve(settings.events_dir)
 
-    def get_events(self, status: Optional[str] = None, event_type: Optional[str] = None, track_id: Optional[int] = None) -> List[TrafficEvent]:
-        events = [self._to_traffic_event(d) for d in get_demo_scenarios()]
+    def get_events(
+        self, status: Optional[str] = None, event_type: Optional[str] = None,
+        track_id: Optional[int] = None, include_demo: bool = False
+    ) -> List[TrafficEvent]:
+        events: List[TrafficEvent] = []
         if self.events_file.exists():
             try:
                 with open(self.events_file, "r", encoding="utf-8") as f:
@@ -25,6 +28,9 @@ class EventService:
                 events.extend([self._to_traffic_event(item) for item in raw_list])
             except Exception:
                 pass
+        if include_demo and not events:
+            events = [self._to_traffic_event(d) for d in get_demo_scenarios()]
+
         if status:
             events = [e for e in events if e.status.upper() == status.upper()]
         if event_type:
@@ -34,13 +40,13 @@ class EventService:
         return events
 
     def get_event_by_id(self, event_id: str) -> TrafficEvent:
-        for ev in self.get_events():
+        for ev in self.get_events(include_demo=True):
             if ev.event_id.upper() == event_id.upper():
                 return ev
         raise HTTPException(status_code=404, detail=f"Event {event_id} not found")
 
-    def export_csv(self) -> str:
-        events = self.get_events()
+    def export_csv(self, include_demo: bool = False) -> str:
+        events = self.get_events(include_demo=include_demo)
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(["event_id", "status", "event_type", "track_ids", "time_start", "time_end", "confidence", "explanation"])

@@ -5,7 +5,7 @@ from app.services.event_service import EventService
 
 def test_demo_scenarios_presence():
     svc = EventService(Settings())
-    events = svc.get_events()
+    events = svc.get_events(include_demo=True)
     event_ids = [e.event_id for e in events]
 
     assert "EV-101" in event_ids
@@ -27,11 +27,10 @@ def test_demo_scenarios_presence():
 
 def test_csv_export_format():
     svc = EventService(Settings())
-    csv_text = svc.export_csv()
+    csv_text = svc.export_csv(include_demo=True)
     lines = csv_text.strip().split("\n")
     assert len(lines) >= 6
     header = lines[0].strip().split(",")
     assert "event_id" in header
     assert "status" in header
     assert "confidence" in header
-

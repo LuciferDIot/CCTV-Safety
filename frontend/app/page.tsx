@@ -755,33 +755,6 @@ export default function DashboardPage() {
                     PERMITTED FLOW
                   </text>
                 </g>
-
-                {/* Active Event Bounding Box in raw view mode */}
-                {selectedEvent && videoViewMode === 'raw' && (
-                  <g>
-                    <rect
-                      x="1850"
-                      y="1100"
-                      width="180"
-                      height="240"
-                      fill="none"
-                      stroke={getColor(selectedEvent.status)}
-                      strokeWidth="8"
-                      rx="8"
-                    />
-                    <circle cx="1940" cy="1340" r="14" fill={getColor(selectedEvent.status)} />
-                    <text
-                      x="1850"
-                      y="1080"
-                      fill={getColor(selectedEvent.status)}
-                      fontSize="44"
-                      fontFamily="monospace"
-                      fontWeight="bold"
-                    >
-                      {selectedEvent.event_id} · T-#{selectedEvent.track_ids.join(', #')} [{selectedEvent.status}]
-                    </text>
-                  </g>
-                )}
               </svg>
             </div>
 
@@ -1114,8 +1087,9 @@ export default function DashboardPage() {
             })}
 
             {events.length === 0 && (
-              <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>
-                No events match filter &quot;{filter}&quot;
+              <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 11, lineHeight: 1.6 }}>
+                No events analyzed yet for this video.<br />
+                Click <strong style={{ color: '#38bdf8' }}>&quot;Render Video&quot;</strong> above to start AI safety detection.
               </div>
             )}
           </div>

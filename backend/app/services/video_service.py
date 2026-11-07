@@ -19,6 +19,8 @@ class VideoService:
     def list_videos(self) -> List[VideoMetadata]:
         videos = []
         for path in sorted(list(self.videos_dir.glob("*.mp4")) + list(self.output_dir.glob("*.mp4"))):
+            if path.name.endswith(".tmp.mp4"):
+                continue
             meta = self.probe_video(path)
             if meta:
                 videos.append(meta)
