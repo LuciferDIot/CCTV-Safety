@@ -8,15 +8,27 @@ def is_normal_lane_transit(
     dy: float,
     lane_vectors: Optional[List[Tuple[float, float]]]
 ) -> bool:
-    """Check if vehicle motion matches permitted longitudinal lane traffic flow."""
+    """Check if vehicle motion matches permitted longitudinal lane traffic flow.
+    Direction-agnostic: evaluates alignment relative to each lane vector rather than assuming vertical Y motion.
+    """
     v_len = math.hypot(dx, dy)
     if v_len <= 0.5 or not lane_vectors:
         return False
 
-    v_norm = (dx / v_len, dy / v_len)
+    vx, vy = dx / v_len, dy / v_len
     for l_vec in lane_vectors:
-        dot = v_norm[0] * l_vec[0] + v_norm[1] * l_vec[1]
-        if dot >= 0.65 and abs(dy) >= 0.8 * abs(dx):
+        lx, ly = l_vec
+        l_len = math.hypot(lx, ly)
+        if l_len <= 1e-6:
+            continue
+        lux, luy = lx / l_len, ly / l_len
+
+        # Longitudinal alignment (flow dot product) and lateral deviation
+        longitudinal_dot = vx * lux + vy * luy
+        lateral_dot = abs(vx * (-luy) + vy * lux)
+
+        # Vehicle is aligned along lane flow corridor (within ~39 deg) without heavy lateral swerve
+        if longitudinal_dot >= 0.65 and longitudinal_dot >= 0.80 * lateral_dot:
             return True
     return False
 
@@ -34,4 +46,3 @@ def classify_crosswalk_motion(
     if corr_speed >= min_riding_speed or cw_dist_corr >= min_passage_dist_px:
         return "CROSSWALK_RIDING"
     return "TRAVERSING_PRELIMINARY"
-

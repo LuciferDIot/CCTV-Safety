@@ -23,7 +23,7 @@ def _match_rider_to_bike(pb: np.ndarray, b_indices: np.ndarray, detections: sv.D
 
 
 def _is_walking_ped(tid: Optional[int], track_history: Optional[dict]) -> bool:
-    """Check if motion history indicates slow walking speed or lateral travel."""
+    """Check if motion history indicates slow walking speed."""
     if tid is None or not track_history or tid not in track_history:
         return False
     hist = track_history[tid]
@@ -32,7 +32,7 @@ def _is_walking_ped(tid: Optional[int], track_history: Optional[dict]) -> bool:
     dx = hist[-1][0] - hist[0][0]
     dy = hist[-1][1] - hist[0][1]
     speed = np.hypot(dx, dy) / max(1, len(hist) - 1)
-    return speed <= 4.0 or abs(dx) >= 0.8 * abs(dy)
+    return speed <= 4.0
 
 
 def resolve_riders_and_pedestrians(
@@ -71,4 +71,3 @@ def resolve_riders_and_pedestrians(
     keep = np.ones(len(detections), dtype=bool)
     keep[suppress] = False
     return detections[keep]
-

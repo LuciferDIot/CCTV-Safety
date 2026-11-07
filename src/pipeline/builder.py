@@ -34,7 +34,8 @@ def build_pipeline_components(
         road_polygon=np.array(config.road.polygon),
         frame_height=cam_h, perspective_cfg=persp
     )
-    lane_det.calibrate(fallback_lanes=config.lanes)
+    fallback = config.lanes if config.lanes else None
+    lane_det.calibrate(fallback_lanes=fallback)
     dir_chk = DirectionChecker(
         min_frames=5, min_sustained_frames=5, min_recent_speed=2.0,
         min_total_dist_px=20.0, wrong_way_threshold=-0.60,

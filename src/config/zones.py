@@ -53,8 +53,8 @@ class IntersectionConfig(BaseModel):
     fps: float = 30.0
     perspective_scale_by_y: PerspectiveScaleConfig
     road: RoadConfig
-    lanes: List[LaneConfig]
-    crosswalks: List[CrosswalkConfig]
+    lanes: List[LaneConfig] = Field(default_factory=list)
+    crosswalks: List[CrosswalkConfig] = Field(default_factory=list)
 
 def load_intersection_config(config_path: Path) -> IntersectionConfig:
     """Loads and validates intersection configuration JSON using Pydantic."""
