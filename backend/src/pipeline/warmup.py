@@ -35,5 +35,5 @@ def step_auto_calibration(
     )
     if should_calibrate:
         if lane_detector.auto_calibrate(force=lane_detector.is_calibrated):
-            return create_annotators(lane_detector.lane_zones, crosswalk_zones)
+            return create_annotators([road_poly], crosswalk_zones)
     return None

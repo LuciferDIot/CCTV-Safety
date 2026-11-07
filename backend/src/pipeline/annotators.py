@@ -1,23 +1,32 @@
-"""Annotator initializers for bounding boxes, badges, and zone visualization."""
-from typing import NamedTuple
+"""Annotator initializers for bounding boxes, badges, and whole translucent zones."""
+from typing import NamedTuple, Any
 import numpy as np
 import cv2
 import supervision as sv
 
 
 class TranslucentZoneAnnotator:
-    """Renders polygon zones with subtle lower opacity alpha blending."""
-    def __init__(self, zone, bgr_color: tuple, thickness: int = 2, alpha: float = 0.35):
-        self.zone = zone
+    """Renders whole polygon zones with semi-transparent fill and clear outline."""
+    def __init__(
+        self, polygon: Any, bgr_color: tuple,
+        fill_alpha: float = 0.12, border_alpha: float = 0.45, thickness: int = 2
+    ):
+        raw = getattr(polygon, "polygon", polygon)
+        self.polygon = np.array(raw, dtype=np.int32)
         self.bgr_color = bgr_color
+        self.fill_alpha = fill_alpha
+        self.border_alpha = border_alpha
         self.thickness = thickness
-        self.alpha = alpha
 
     def annotate(self, scene: np.ndarray) -> np.ndarray:
-        poly = np.array(self.zone.polygon, dtype=np.int32)
+        if len(self.polygon) < 3:
+            return scene
         overlay = scene.copy()
-        cv2.polylines(overlay, [poly], isClosed=True, color=self.bgr_color, thickness=self.thickness)
-        cv2.addWeighted(overlay, self.alpha, scene, 1.0 - self.alpha, 0, scene)
+        cv2.fillPoly(overlay, [self.polygon], self.bgr_color)
+        cv2.addWeighted(overlay, self.fill_alpha, scene, 1.0 - self.fill_alpha, 0, scene)
+        border = scene.copy()
+        cv2.polylines(border, [self.polygon], isClosed=True, color=self.bgr_color, thickness=self.thickness)
+        cv2.addWeighted(border, self.border_alpha, scene, 1.0 - self.border_alpha, 0, scene)
         return scene
 
 
@@ -33,19 +42,19 @@ class PipelineAnnotators(NamedTuple):
     zone_annotators: list
 
 
-def create_annotators(lane_zones: list, crosswalk_zones: list) -> PipelineAnnotators:
-    """Create styled Supervision annotators for alerts, warnings, and translucent zones."""
+def create_annotators(lane_polys: list, crosswalk_polys: list) -> PipelineAnnotators:
+    """Create styled Supervision annotators with whole-zone translucent overlays."""
     red_palette = sv.ColorPalette.from_hex(["#FF0000"])
     orange_palette = sv.ColorPalette.from_hex(["#FF8C00"])
     cyan_palette = sv.ColorPalette.from_hex(["#00E5FF"])
     green_palette = sv.ColorPalette.from_hex(["#00FF00"])
 
     z_annotators = [
-        TranslucentZoneAnnotator(zone=z, bgr_color=(255, 128, 0), thickness=2, alpha=0.25)
-        for z in lane_zones
+        TranslucentZoneAnnotator(p, bgr_color=(248, 189, 56), fill_alpha=0.12, border_alpha=0.45, thickness=2)
+        for p in lane_polys
     ] + [
-        TranslucentZoneAnnotator(zone=z, bgr_color=(0, 229, 255), thickness=2, alpha=0.30)
-        for z in crosswalk_zones
+        TranslucentZoneAnnotator(p, bgr_color=(36, 191, 251), fill_alpha=0.18, border_alpha=0.55, thickness=3)
+        for p in crosswalk_polys
     ]
 
     return PipelineAnnotators(

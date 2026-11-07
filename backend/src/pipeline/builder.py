@@ -49,7 +49,8 @@ def build_pipeline_components(
     ped_chk = PedestrianSafetyChecker(min_confirm_frames=2)
     ev_ver = EventVerifier(fps=fps)
     expl_eng = ExplanationEngine(output_dir=events_dir)
-    ann = create_annotators(lane_det.lane_zones, cw_chk.crosswalk_zones)
+    road_polys = lane_det.lane_zones if lane_det.lane_zones else [config.road.polygon]
+    ann = create_annotators(road_polys, cw_chk.crosswalk_zones)
     return (tracker, lane_det, dir_chk, cw_chk, ped_chk, ev_ver, expl_eng, ann)
 
 
