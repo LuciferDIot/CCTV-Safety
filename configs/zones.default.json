@@ -1,0 +1,32 @@
+{
+  "camera_id": "cam_01",
+  "video_file": "intersection_01.mp4",
+  "fps": 30.0,
+  "perspective_scale_by_y": {
+    "y_top": 0.1,
+    "y_bottom": 1.0,
+    "weight_top": 0.35,
+    "weight_bottom": 1.0
+  },
+  "road": {
+    "polygon": [
+      [1399, 205],
+      [2863, 235],
+      [4037, 2154],
+      [650, 2157]
+    ],
+    "mode": "auto",
+    "warmup_frames": 40
+  },
+  "crosswalks": [
+    {
+      "id": "crosswalk_top",
+      "polygon": [
+        [3022, 351],
+        [1292, 351],
+        [1088, 675],
+        [3304, 672]
+      ]
+    }
+  ]
+}
