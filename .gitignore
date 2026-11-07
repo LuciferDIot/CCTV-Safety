@@ -4,19 +4,42 @@ venv/
 env/
 ENV/
 
+# Python Build & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.egg-info/
+build/
+dist/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js Frontend Artifacts
+node_modules/
+.next/
+.turbo/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+
 # IDE / Editor Files
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-*.pyd
-
-# Large Video Files (>100MB, exceeds GitHub limits)
+# Large Video Files (>100MB)
 *.mp4
 *.avi
 *.mov
@@ -35,8 +58,6 @@ models/*.pt
 # Generated outputs
 data/output/
 
-
 # OS generated files
 .DS_Store
 Thumbs.db
-
