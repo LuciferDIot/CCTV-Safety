@@ -44,7 +44,8 @@ def run_pipeline_inference(
         pipeline = IntersectionSafetyPipeline(
             config_path=settings.resolve(settings.config_file),
             model_path=settings.resolve(settings.model_weights),
-            output_dir=out_dir, device=req.device, imgsz=req.imgsz
+            output_dir=out_dir, device=req.device, imgsz=req.imgsz,
+            override_zones=req.zones
         )
 
         for f_idx in range(frames_to_run):
@@ -85,9 +86,8 @@ def run_pipeline_inference(
             task["status"] = "completed"
             telemetry.fps = task["fps"]
             telemetry.active_tracks = len(pipeline.tracker.tracks)
-        else:
-            if tmp_path.exists():
-                tmp_path.unlink()
+        elif tmp_path and tmp_path.exists():
+            tmp_path.unlink()
     except Exception as e:
         task["status"] = "failed"
         task["error"] = str(e)

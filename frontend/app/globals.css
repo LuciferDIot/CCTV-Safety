@@ -83,3 +83,21 @@ h1, h2, p { margin: 0; } h1 { font-size: 15px; letter-spacing: -.01em; margin-to
 .render-cta-btn { background: linear-gradient(135deg, #0284c7, #2563eb); border: 1px solid #38bdf8; color: #fff; padding: 6px 12px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .render-cta-btn:hover { filter: brightness(1.15); }
 .render-cta-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Upload-First & Dropzone Styles */
+.active-video-pill { display: inline-flex; align-items: center; gap: 8px; background: #0c1520; border: 1px solid #1e3a4e; border-radius: 5px; padding: 5px 10px; font-size: 11px; }
+.active-video-name { font-family: monospace; color: #e2e8f0; font-weight: 600; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.switch-video-btn { background: #132230; border: 1px solid #23435e; color: #7dd3fc; border-radius: 4px; padding: 2px 7px; font-size: 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.switch-video-btn:hover { background: #1e3952; color: #fff; }
+
+.feed-viewport.empty-dropzone { display: grid; place-items: center; border: 2px dashed #203546; background: #080d13; }
+.feed-viewport.drag-over { border-color: #38bdf8; background: #0a1724; }
+.upload-empty-state { text-align: center; max-width: 480px; padding: 30px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 10; }
+.empty-upload-icon { width: 72px; height: 72px; border-radius: 50%; background: #0c1b27; border: 1px solid #1c3b52; display: grid; place-items: center; margin-bottom: 4px; box-shadow: 0 0 25px rgba(56, 189, 248, 0.15); }
+.upload-empty-state h3 { font-size: 16px; font-weight: 700; color: #f1f5f9; margin: 0; }
+.upload-empty-state p { font-size: 11px; color: #64748b; line-height: 1.5; margin: 0; }
+.empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+.primary-upload-btn { background: linear-gradient(135deg, #0284c7, #2563eb); border: 1px solid #38bdf8; color: #fff; padding: 9px 18px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3); }
+.primary-upload-btn:hover { filter: brightness(1.15); }
+.secondary-sample-btn { background: #111a24; border: 1px solid #233446; color: #94a3b8; padding: 9px 16px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.secondary-sample-btn:hover { background: #1c2a3a; color: #e2e8f0; border-color: #38bdf8; }

@@ -8,6 +8,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    proxyClientMaxBodySize: '1024mb',
+    serverActions: {
+      bodySizeLimit: '1024mb',
+    },
+  },
   async rewrites() {
     return [
       {

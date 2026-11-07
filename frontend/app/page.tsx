@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
+  Video,
 } from 'lucide-react'
 import {
   fetchVideos,
@@ -49,7 +50,8 @@ import {
 export default function DashboardPage() {
   const [isMounted, setIsMounted] = useState<boolean>(false)
   const [videos, setVideos] = useState<VideoMetadata[]>([])
-  const [selectedVideo, setSelectedVideo] = useState<string>('intersection_01.mp4')
+  const [selectedVideo, setSelectedVideo] = useState<string>('')
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false)
   const [events, setEvents] = useState<TrafficEvent[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string>('EV-01')
   const [filter, setFilter] = useState<string>('All events')
@@ -92,9 +94,9 @@ export default function DashboardPage() {
   }, [])
 
   // Determine current video stream
-  const baseVideoStem = selectedVideo.replace('_annotated.mp4', '').replace('.mp4', '')
-  const annotatedVideoName = `${baseVideoStem}_annotated.mp4`
-  const annotatedVideoExists = videos.some((v) => v.name === annotatedVideoName)
+  const baseVideoStem = selectedVideo ? selectedVideo.replace('_annotated.mp4', '').replace('.mp4', '') : ''
+  const annotatedVideoName = baseVideoStem ? `${baseVideoStem}_annotated.mp4` : ''
+  const annotatedVideoExists = Boolean(annotatedVideoName && videos.some((v) => v.name === annotatedVideoName))
 
   const currentStreamFile = videoViewMode === 'analyzed' && annotatedVideoExists
     ? annotatedVideoName
@@ -108,7 +110,6 @@ export default function DashboardPage() {
     fetchVideos()
       .then((vList) => {
         setVideos(vList)
-        if (vList.length > 0 && !selectedVideo) setSelectedVideo(vList[0].name)
       })
       .catch((err) => console.error('Failed to load videos:', err))
 
@@ -203,9 +204,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const processUploadedFile = async (file: File) => {
     setIsUploading(true)
     try {
       const res = await uploadVideo(file)
@@ -214,11 +213,47 @@ export default function DashboardPage() {
       setVideos(updated)
       setSelectedVideo(res.filename)
       setVideoViewMode('raw')
+      setMode('edit')
     } catch (err: any) {
       showToast(`Upload failed: ${err.message}`)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await processUploadedFile(file)
+  }
+
+  const handleLoadSample = () => {
+    setSelectedVideo('intersection_01.mp4')
+    setVideoViewMode('raw')
+    setMode('edit')
+    showToast('Loaded sample intersection_01.mp4. Ready to adjust zones.')
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(false)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      await processUploadedFile(files[0])
     }
   }
 
@@ -271,12 +306,12 @@ export default function DashboardPage() {
     }
   }
 
-  // Video Rendering Trigger
+  // Video Rendering Trigger (passes in-memory zones directly to pipeline without saving to disk)
   const handleStartRender = async () => {
-    if (isRendering) return
+    if (isRendering || !selectedVideo) return
     try {
       const maxFr = renderPreset === 'preview' ? 100 : null
-      const initialTask = await startPipelineJob(selectedVideo, maxFr)
+      const initialTask = await startPipelineJob(selectedVideo, maxFr, zones)
       setActiveTask(initialTask)
       showToast(`Started rendering (${renderPreset === 'preview' ? 'Fast 100 frames' : 'Full video'})`)
 
@@ -291,8 +326,14 @@ export default function DashboardPage() {
             const updatedVideos = await fetchVideos()
             setVideos(updatedVideos)
             setVideoViewMode('analyzed')
+            setMode('view')
             const updatedEvents = await fetchEvents(filter)
             setEvents(updatedEvents)
+            setTimeout(() => {
+              if (updatedEvents.length > 0 && updatedEvents[0].time_start != null) {
+                jumpToTime(updatedEvents[0].time_start)
+              }
+            }, 600)
           } else if (status.status === 'failed' || status.status === 'cancelled') {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
             showToast(`Rendering ${status.status}: ${status.error || ''}`)
@@ -379,7 +420,23 @@ export default function DashboardPage() {
 
   return (
     <main className="dashboard-shell">
-      {toastMessage && <div className="toast-badge"><Check size={16} />{toastMessage}</div>}
+      {toastMessage && (
+        <div
+          className="toast-badge"
+          style={
+            toastMessage.toLowerCase().includes('failed') || toastMessage.toLowerCase().includes('error')
+              ? { background: '#4c0519', borderColor: '#f43f5e', color: '#ffe4e6' }
+              : undefined
+          }
+        >
+          {toastMessage.toLowerCase().includes('failed') || toastMessage.toLowerCase().includes('error') ? (
+            <AlertCircle size={16} style={{ color: '#fb7185' }} />
+          ) : (
+            <Check size={16} />
+          )}
+          {toastMessage}
+        </div>
+      )}
 
       {/* 1. TOP HEADER */}
       <header className="topbar">
@@ -397,27 +454,7 @@ export default function DashboardPage() {
             <i /> {telemetry.active_model}
           </span>
 
-          {/* Video Selector */}
-          <div className="clip-select">
-            <select
-              value={selectedVideo}
-              onChange={(e) => {
-                setSelectedVideo(e.target.value)
-                setVideoViewMode('raw')
-              }}
-              title="Select camera video stream"
-            >
-              {videos.map((v) => (
-                <option key={v.name} value={v.name}>
-                  {v.name} ({v.fps} FPS · {v.duration_seconds}s)
-                </option>
-              ))}
-              {videos.length === 0 && <option value="intersection_01.mp4">intersection_01.mp4</option>}
-            </select>
-            <ChevronDown size={13} />
-          </div>
-
-          {/* Upload Button */}
+          {/* Hidden File Input */}
           <input
             type="file"
             ref={fileInputRef}
@@ -425,65 +462,87 @@ export default function DashboardPage() {
             accept=".mp4,.avi,.mov"
             onChange={handleFileUpload}
           />
-          <button
-            className="icon-button"
-            title="Upload CCTV video file"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            style={{ border: '1px solid #26303c', padding: '7px 10px', fontSize: 11, gap: 6, display: 'inline-flex' }}
-          >
-            <Upload size={14} /> {isUploading ? 'Uploading...' : 'Upload'}
-          </button>
 
-          {/* Render Preset & Start Button */}
-          <div className="clip-select" style={{ padding: '4px 6px' }}>
-            <select
-              value={renderPreset}
-              onChange={(e) => setRenderPreset(e.target.value as any)}
-              title="Select rendering frame limit"
-              style={{ fontSize: 10, maxWidth: 130 }}
-            >
-              <option value="preview">Fast Preview (100 fr)</option>
-              <option value="full">Full Video (All fr)</option>
-            </select>
-            <ChevronDown size={12} />
-          </div>
+          {selectedVideo ? (
+            <>
+              {/* Active Video Pill (replaces dropdown) */}
+              <div className="active-video-pill">
+                <Video size={13} style={{ color: '#38bdf8' }} />
+                <span className="active-video-name" title={selectedVideo}>{selectedVideo}</span>
+                <button
+                  className="switch-video-btn"
+                  onClick={() => {
+                    setSelectedVideo('')
+                    setVideoViewMode('raw')
+                    setMode('view')
+                  }}
+                  title="Change or upload a different video"
+                >
+                  Change Video
+                </button>
+              </div>
 
-          <button
-            className="render-cta-btn"
-            onClick={handleStartRender}
-            disabled={isRendering}
-            title="Trigger AI detection, ByteTrack tracking, and safety rule analysis"
-          >
-            {isRendering ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
-            {isRendering ? 'Rendering...' : 'Render Video'}
-          </button>
+              {/* Render Preset & Start Button */}
+              <div className="clip-select" style={{ padding: '4px 6px' }}>
+                <select
+                  value={renderPreset}
+                  onChange={(e) => setRenderPreset(e.target.value as any)}
+                  title="Select rendering frame limit"
+                  style={{ fontSize: 10, maxWidth: 130 }}
+                >
+                  <option value="preview">Fast Preview (100 fr)</option>
+                  <option value="full">Full Video (All fr)</option>
+                </select>
+                <ChevronDown size={12} />
+              </div>
 
-          {/* View / Edit Mode Toggle */}
-          <div className="mode-toggle">
+              <button
+                className="render-cta-btn"
+                onClick={handleStartRender}
+                disabled={isRendering}
+                title="Trigger AI detection, ByteTrack tracking, and safety rule analysis"
+              >
+                {isRendering ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+                {isRendering ? 'Rendering...' : 'Render Video'}
+              </button>
+
+              {/* View / Edit Mode Toggle */}
+              <div className="mode-toggle">
+                <button
+                  className={mode === 'view' ? 'active' : ''}
+                  onClick={() => setMode('view')}
+                >
+                  Playback View
+                </button>
+                <button
+                  className={mode === 'edit' ? 'active' : ''}
+                  onClick={() => setMode('edit')}
+                >
+                  <Edit3 size={13} /> Edit Zones
+                </button>
+              </div>
+
+              {/* Machine-Readable Export Buttons */}
+              <div className="export-actions">
+                <a href={getExportUrl('json')} download="detected_events.json" style={{ textDecoration: 'none' }}>
+                  <button title="Export events JSON"><FileJson size={14} /> JSON</button>
+                </a>
+                <a href={getExportUrl('csv')} download="detected_events.csv" style={{ textDecoration: 'none' }}>
+                  <button title="Export events CSV"><FileSpreadsheet size={14} /> CSV</button>
+                </a>
+              </div>
+            </>
+          ) : (
             <button
-              className={mode === 'view' ? 'active' : ''}
-              onClick={() => setMode('view')}
+              className="icon-button"
+              title="Upload CCTV video file"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              style={{ border: '1px solid #26303c', padding: '7px 12px', fontSize: 11, gap: 6, display: 'inline-flex' }}
             >
-              Playback View
+              <Upload size={14} /> {isUploading ? 'Uploading...' : 'Upload Video'}
             </button>
-            <button
-              className={mode === 'edit' ? 'active' : ''}
-              onClick={() => setMode('edit')}
-            >
-              <Edit3 size={13} /> Edit Zones
-            </button>
-          </div>
-
-          {/* Machine-Readable Export Buttons */}
-          <div className="export-actions">
-            <a href={getExportUrl('json')} download="detected_events.json" style={{ textDecoration: 'none' }}>
-              <button title="Export events JSON"><FileJson size={14} /> JSON</button>
-            </a>
-            <a href={getExportUrl('csv')} download="detected_events.csv" style={{ textDecoration: 'none' }}>
-              <button title="Export events CSV"><FileSpreadsheet size={14} /> CSV</button>
-            </a>
-          </div>
+          )}
         </div>
       </header>
 
@@ -494,7 +553,7 @@ export default function DashboardPage() {
           <span className="telemetry-divider" />
           <span>Device: <strong style={{ color: '#93c5fd' }}>{health?.device?.toUpperCase() || 'CPU'}</strong></span>
           <span className="telemetry-divider" />
-          <span className="telemetry-muted">Video: {selectedVideo}</span>
+          <span className="telemetry-muted">Video: {selectedVideo || 'No video loaded'}</span>
         </div>
 
         <div className="hud">
@@ -576,32 +635,34 @@ export default function DashboardPage() {
             <div className="canvas-toolbar">
               <div className="canvas-label">
                 <ScanLine size={15} />
-                <span>FEED: {baseVideoStem.toUpperCase()}</span>
+                <span>FEED: {selectedVideo ? baseVideoStem.toUpperCase() : 'NO VIDEO LOADED'}</span>
                 {/* Raw vs Analyzed Toggle */}
-                <div className="feed-toggle-pills" style={{ marginLeft: 8 }}>
-                  <button
-                    className={`feed-toggle-btn ${videoViewMode === 'raw' ? 'active' : ''}`}
-                    onClick={() => setVideoViewMode('raw')}
-                  >
-                    RAW CCTV FEED
-                  </button>
-                  <button
-                    className={`feed-toggle-btn ${videoViewMode === 'analyzed' ? 'active' : ''}`}
-                    onClick={() => {
-                      if (!annotatedVideoExists) {
-                        showToast(`No annotated video yet for ${selectedVideo}. Click 'Render Video' first.`)
-                      }
-                      setVideoViewMode('analyzed')
-                    }}
-                    title={annotatedVideoExists ? 'Switch to AI analyzed video with bounding boxes & HUD' : 'Run render to generate annotated output'}
-                  >
-                    AI ANALYZED {annotatedVideoExists ? '●' : ''}
-                  </button>
-                </div>
+                {selectedVideo && (
+                  <div className="feed-toggle-pills" style={{ marginLeft: 8 }}>
+                    <button
+                      className={`feed-toggle-btn ${videoViewMode === 'raw' ? 'active' : ''}`}
+                      onClick={() => setVideoViewMode('raw')}
+                    >
+                      RAW CCTV FEED
+                    </button>
+                    <button
+                      className={`feed-toggle-btn ${videoViewMode === 'analyzed' ? 'active' : ''}`}
+                      onClick={() => {
+                        if (!annotatedVideoExists) {
+                          showToast(`No annotated video yet for ${selectedVideo}. Click 'Render Video' first.`)
+                        }
+                        setVideoViewMode('analyzed')
+                      }}
+                      title={annotatedVideoExists ? 'Switch to AI analyzed video with bounding boxes & HUD' : 'Run render to generate annotated output'}
+                    >
+                      AI ANALYZED {annotatedVideoExists ? '●' : ''}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="canvas-actions">
-                {mode === 'edit' && (
+                {selectedVideo && mode === 'edit' && (
                   <>
                     {/* Layer Tabs: Road vs Crosswalk */}
                     <div className="layer-tabs">
@@ -634,19 +695,11 @@ export default function DashboardPage() {
 
                     <button
                       className="icon-button"
-                      style={{ color: '#38bdf8', border: '1px solid #0369a1', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5, marginLeft: 6 }}
-                      onClick={handleSaveZones}
-                      title="Save modified zones to configs/zones.json"
-                    >
-                      <Save size={13} /> Save Config
-                    </button>
-                    <button
-                      className="icon-button"
-                      style={{ border: '1px solid #26303c', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5 }}
+                      style={{ border: '1px solid #26303c', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5, marginLeft: 6 }}
                       onClick={handleResetZones}
-                      title="Reset zones to default"
+                      title="Reset zones to default layout"
                     >
-                      <RotateCcw size={13} /> Reset
+                      <RotateCcw size={13} /> Reset Layout
                     </button>
                   </>
                 )}
@@ -665,126 +718,167 @@ export default function DashboardPage() {
             </div>
 
             {/* VIDEO VIEWPORT & SVG OVERLAY */}
-            <div className="feed-viewport">
-              {/* CCTV Video Streaming */}
-              <video
-                key={currentStreamFile}
-                ref={videoRef}
-                src={getVideoStreamUrl(currentStreamFile)}
-                className="video-player"
-                playsInline
-                muted
-                onTimeUpdate={handleTimeUpdate}
-                onLoadedMetadata={handleTimeUpdate}
-                onClick={togglePlay}
-              />
-
-              {/* Interactive SVG Overlay (3840 x 2160 native coordinates) */}
-              <svg
-                viewBox="0 0 3840 2160"
-                className={`canvas-svg-overlay ${mode === 'edit' ? 'interactive' : ''}`}
-                onPointerMove={handleSvgPointerMove}
-                onPointerUp={() => setDraggingVertex(null)}
-              >
-                {/* Road Zone Polygon (Visible in Edit mode or Raw mode) */}
-                {(mode === 'edit' || videoViewMode === 'raw') && zones?.road?.polygon && (
-                  <polygon
-                    points={zones.road.polygon.map((p) => p.join(',')).join(' ')}
-                    fill={mode === 'edit' && activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
-                    stroke="#38bdf8"
-                    strokeWidth={mode === 'edit' && activeZoneTab === 'road' ? '8' : '4'}
-                    strokeDasharray="16 8"
+            <div
+              className={`feed-viewport ${!selectedVideo ? 'empty-dropzone' : ''} ${isDraggingOver ? 'drag-over' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {!selectedVideo ? (
+                <div className="upload-empty-state">
+                  <div className="empty-upload-icon">
+                    <Upload size={32} style={{ color: '#38bdf8' }} />
+                  </div>
+                  <h3>Upload CCTV Video Stream</h3>
+                  <p>
+                    Drag &amp; drop your 4K/1080p MP4 or AVI footage here, or load the built-in intersection sample to calibrate zones and run safety checks.
+                  </p>
+                  <div className="empty-actions">
+                    <button
+                      className="primary-upload-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {isUploading ? 'Uploading Video...' : 'Select Video File'}
+                    </button>
+                    <button
+                      className="secondary-sample-btn"
+                      onClick={handleLoadSample}
+                    >
+                      <Video size={14} style={{ color: '#38bdf8' }} />
+                      Load Default Sample (intersection_01.mp4)
+                    </button>
+                  </div>
+                  <span style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
+                    Supports MP4, AVI, MOV up to 1GB · Zero predictions until you click &quot;Render Video&quot;
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {/* CCTV Video Streaming */}
+                  <video
+                    key={currentStreamFile}
+                    ref={videoRef}
+                    src={getVideoStreamUrl(currentStreamFile)}
+                    className="video-player"
+                    playsInline
+                    muted
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleTimeUpdate}
+                    onClick={togglePlay}
                   />
-                )}
 
-                {/* Crosswalk Polygon Zone (if enabled) */}
-                {(mode === 'edit' || videoViewMode === 'raw') && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
-                  <polygon
-                    points={zones.crosswalks[0].polygon.map((p) => p.join(',')).join(' ')}
-                    fill={mode === 'edit' && activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
-                    stroke="#fbbf24"
-                    strokeWidth={mode === 'edit' && activeZoneTab === 'crosswalk' ? '10' : '6'}
-                  />
-                )}
-
-                {/* Draggable Road Vertices (Edit Mode - Road Active) */}
-                {mode === 'edit' && activeZoneTab === 'road' &&
-                  zones?.road?.polygon?.map(([x, y], idx) => (
-                    <g key={`road-${idx}`}>
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r="45"
-                        fill="#0b1115"
+                  {/* Interactive SVG Overlay (3840 x 2160 native coordinates) */}
+                  <svg
+                    viewBox="0 0 3840 2160"
+                    className={`canvas-svg-overlay ${mode === 'edit' ? 'interactive' : ''}`}
+                    onPointerMove={handleSvgPointerMove}
+                    onPointerUp={() => setDraggingVertex(null)}
+                  >
+                    {/* Road Zone Polygon (Visible in Edit mode or Raw mode) */}
+                    {(mode === 'edit' || videoViewMode === 'raw') && zones?.road?.polygon && (
+                      <polygon
+                        points={zones.road.polygon.map((p) => p.join(',')).join(' ')}
+                        fill={mode === 'edit' && activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
                         stroke="#38bdf8"
-                        strokeWidth="10"
-                        style={{ cursor: 'grab' }}
-                        onPointerDown={() => setDraggingVertex({ zone: 'road', index: idx })}
+                        strokeWidth={mode === 'edit' && activeZoneTab === 'road' ? '8' : '4'}
+                        strokeDasharray="16 8"
                       />
-                      <text x={x + 52} y={y + 16} fill="#38bdf8" fontSize="48" fontFamily="monospace" fontWeight="bold">
-                        R{idx + 1}
-                      </text>
-                    </g>
-                  ))}
+                    )}
 
-                {/* Draggable Crosswalk Vertices (Edit Mode - Crosswalk Active) */}
-                {mode === 'edit' && activeZoneTab === 'crosswalk' && crosswalkEnabled &&
-                  zones?.crosswalks?.[0]?.polygon?.map(([x, y], idx) => (
-                    <g key={`cw-${idx}`}>
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r="45"
-                        fill="#0b1115"
+                    {/* Crosswalk Polygon Zone (if enabled) */}
+                    {(mode === 'edit' || videoViewMode === 'raw') && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
+                      <polygon
+                        points={zones.crosswalks[0].polygon.map((p) => p.join(',')).join(' ')}
+                        fill={mode === 'edit' && activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
                         stroke="#fbbf24"
-                        strokeWidth="10"
-                        style={{ cursor: 'grab' }}
-                        onPointerDown={() => setDraggingVertex({ zone: 'crosswalk', index: idx })}
+                        strokeWidth={mode === 'edit' && activeZoneTab === 'crosswalk' ? '10' : '6'}
                       />
-                      <text x={x + 52} y={y + 16} fill="#fbbf24" fontSize="48" fontFamily="monospace" fontWeight="bold">
-                        P{idx + 1}
-                      </text>
-                    </g>
-                  ))}
-              </svg>
+                    )}
+
+                    {/* Draggable Road Vertices (Edit Mode - Road Active) */}
+                    {mode === 'edit' && activeZoneTab === 'road' &&
+                      zones?.road?.polygon?.map(([x, y], idx) => (
+                        <g key={`road-${idx}`}>
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="45"
+                            fill="#0b1115"
+                            stroke="#38bdf8"
+                            strokeWidth="10"
+                            style={{ cursor: 'grab' }}
+                            onPointerDown={() => setDraggingVertex({ zone: 'road', index: idx })}
+                          />
+                          <text x={x + 52} y={y + 16} fill="#38bdf8" fontSize="48" fontFamily="monospace" fontWeight="bold">
+                            R{idx + 1}
+                          </text>
+                        </g>
+                      ))}
+
+                    {/* Draggable Crosswalk Vertices (Edit Mode - Crosswalk Active) */}
+                    {mode === 'edit' && activeZoneTab === 'crosswalk' && crosswalkEnabled &&
+                      zones?.crosswalks?.[0]?.polygon?.map(([x, y], idx) => (
+                        <g key={`cw-${idx}`}>
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="45"
+                            fill="#0b1115"
+                            stroke="#fbbf24"
+                            strokeWidth="10"
+                            style={{ cursor: 'grab' }}
+                            onPointerDown={() => setDraggingVertex({ zone: 'crosswalk', index: idx })}
+                          />
+                          <text x={x + 52} y={y + 16} fill="#fbbf24" fontSize="48" fontFamily="monospace" fontWeight="bold">
+                            P{idx + 1}
+                          </text>
+                        </g>
+                      ))}
+                  </svg>
+                </>
+              )}
             </div>
 
             {/* VIDEO SCRUBBER BAR - PLACED OUTSIDE VIEWPORT TO AVOID CLIPPING BOTTOM VERTICES */}
-            <div className="video-scrubber-bar">
-              <button
-                onClick={togglePlay}
-                className="icon-button"
-                style={{ color: '#4ade80', background: 'rgba(16,37,26,0.85)', padding: 7, borderRadius: '50%' }}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-              </button>
+            {selectedVideo && (
+              <div className="video-scrubber-bar">
+                <button
+                  onClick={togglePlay}
+                  className="icon-button"
+                  style={{ color: '#4ade80', background: 'rgba(16,37,26,0.85)', padding: 7, borderRadius: '50%' }}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
+                >
+                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                </button>
 
-              <div className="time-display">
-                <span>{formatSecs(currentTime)}</span> / <span>{formatSecs(duration)}</span>
+                <div className="time-display">
+                  <span>{formatSecs(currentTime)}</span> / <span>{formatSecs(duration)}</span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 100}
+                  step="0.05"
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="scrubber-slider"
+                  aria-label="Video scrubber"
+                />
+
+                <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6ee7b7' }}>
+                  {videoViewMode === 'analyzed' ? 'AI ANNOTATED STREAM' : 'RAW CCTV STREAM'}
+                </span>
               </div>
-
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                step="0.05"
-                value={currentTime}
-                onChange={handleSeek}
-                className="scrubber-slider"
-                aria-label="Video scrubber"
-              />
-
-              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6ee7b7' }}>
-                {videoViewMode === 'analyzed' ? 'AI ANNOTATED STREAM' : 'RAW CCTV STREAM'}
-              </span>
-            </div>
+            )}
 
             {/* EDIT HINT BAR (Visible when in Edit Mode) */}
-            {mode === 'edit' && (
+            {selectedVideo && mode === 'edit' && (
               <div className="edit-hint-bar">
                 <span>EDIT MODE ACTIVE · Drag circular handles R1-R4 (Road) or P1-P4 (Crosswalk) to reshape zones</span>
-                <span style={{ color: '#38bdf8' }}>Click &quot;Save Config&quot; to apply</span>
+                <span style={{ color: '#38bdf8' }}>Click &quot;Render Video&quot; to analyze with this layout</span>
               </div>
             )}
 

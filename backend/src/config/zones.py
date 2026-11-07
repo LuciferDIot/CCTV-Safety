@@ -56,9 +56,15 @@ class IntersectionConfig(BaseModel):
     lanes: List[LaneConfig] = Field(default_factory=list)
     crosswalks: List[CrosswalkConfig] = Field(default_factory=list)
 
+def parse_intersection_config(data: Dict[str, Any]) -> IntersectionConfig:
+    """Parses and validates in-memory dictionary into IntersectionConfig."""
+    d = dict(data)
+    if not d.get("perspective_scale_by_y"):
+        d["perspective_scale_by_y"] = PerspectiveScaleConfig().model_dump()
+    return IntersectionConfig(**d)
+
 def load_intersection_config(config_path: Path) -> IntersectionConfig:
     """Loads and validates intersection configuration JSON using Pydantic."""
     with open(config_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return IntersectionConfig(**data)
+        return parse_intersection_config(json.load(f))
 

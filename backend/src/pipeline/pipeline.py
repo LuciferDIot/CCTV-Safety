@@ -5,7 +5,7 @@ import json
 import numpy as np
 import torch
 
-from src.config.zones import load_intersection_config
+from src.config.zones import load_intersection_config, parse_intersection_config
 from src.core.hud import draw_render_progress_bar
 from src.pipeline.drawer import draw_pedestrians, draw_vehicles
 from src.pipeline.safety_eval import log_candidates_for_crosswalk, check_lane_violations, log_candidates_for_pedestrians
@@ -20,10 +20,11 @@ class IntersectionSafetyPipeline:
 
     def __init__(
         self, config_path: Path, model_path: Optional[Path] = None,
-        output_dir: Optional[Path] = None, device: Optional[str] = None, imgsz: int = 960
+        output_dir: Optional[Path] = None, device: Optional[str] = None, imgsz: int = 960,
+        override_zones: Optional[Dict[str, Any]] = None
     ):
         self.config_path = Path(config_path)
-        self.config = load_intersection_config(self.config_path)
+        self.config = parse_intersection_config(override_zones) if override_zones else load_intersection_config(self.config_path)
         self.imgsz = imgsz
         base = self.config_path.parent.parent
         self.output_dir = Path(output_dir or base / "data" / "output")

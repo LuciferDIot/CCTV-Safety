@@ -118,16 +118,30 @@ export async function fetchVideos(): Promise<VideoMetadata[]> {
   return res.json()
 }
 
-export async function uploadVideo(file: File): Promise<{ message: string; filename: string; metadata: VideoMetadata }> {
+export async function uploadVideo(file: File): Promise<{ message: string; filename: string; metadata?: VideoMetadata }> {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await fetch(`${API_BASE}/videos/upload`, {
-    method: 'POST',
-    body: formData,
-  })
+
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  const directUrl = isLocal ? 'http://127.0.0.1:8000/api/videos/upload' : `${API_BASE}/videos/upload`
+
+  let res: Response
+  try {
+    res = await fetch(directUrl, { method: 'POST', body: formData })
+  } catch {
+    res = await fetch(`${API_BASE}/videos/upload`, { method: 'POST', body: formData })
+  }
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Upload failed')
+    let errorMsg = `Upload failed (Status ${res.status})`
+    try {
+      const err = await res.json()
+      errorMsg = err.detail || err.message || errorMsg
+    } catch {
+      const raw = await res.text().catch(() => '')
+      if (raw) errorMsg = raw.slice(0, 160)
+    }
+    throw new Error(errorMsg)
   }
   return res.json()
 }
@@ -169,12 +183,15 @@ export async function fetchTelemetry(): Promise<TelemetryHUD> {
 
 export async function startPipelineJob(
   videoName: string,
-  maxFrames?: number | null
+  maxFrames?: number | null,
+  zones?: IntersectionZonesConfig | null
 ): Promise<PipelineStatusResponse> {
+  const payload: Record<string, any> = { video_name: videoName, max_frames: maxFrames || undefined }
+  if (zones) payload.zones = zones
   const res = await fetch(`${API_BASE}/pipeline/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ video_name: videoName, max_frames: maxFrames || undefined }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`Failed to start pipeline: ${res.statusText}`)
   return res.json()

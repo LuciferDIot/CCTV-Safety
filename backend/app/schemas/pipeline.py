@@ -1,5 +1,5 @@
 """Schemas for pipeline execution control and real-time HUD telemetry."""
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -12,6 +12,7 @@ class PipelineRunRequest(BaseModel):
     save_annotated_video: bool = True
     max_frames: Optional[int] = None
     stride: int = Field(default=1, ge=1, le=10)
+    zones: Optional[Dict[str, Any]] = None
 
 
 class PipelineStatusResponse(BaseModel):

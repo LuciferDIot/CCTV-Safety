@@ -1,4 +1,5 @@
 """Video catalog and metadata schemas."""
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -19,5 +20,4 @@ class VideoUploadResponse(BaseModel):
     message: str
     filename: str
     size_mb: float
-    metadata: VideoMetadata
-
+    metadata: Optional[VideoMetadata] = None

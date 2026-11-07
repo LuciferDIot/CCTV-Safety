@@ -34,6 +34,11 @@ def upload_video(file: UploadFile = File(...), svc: VideoService = Depends(get_v
         shutil.copyfileobj(file.file, buffer)
     meta = svc.probe_video(dest)
     size_mb = round(dest.stat().st_size / (1024 * 1024), 2)
+    if not meta:
+        meta = VideoMetadata(
+            name=file.filename, fps=30.0, total_frames=0, duration_seconds=0.0,
+            width=1920, height=1080, size_mb=size_mb, stream_url=f"/api/videos/{file.filename}/stream"
+        )
     return VideoUploadResponse(message="Video uploaded successfully", filename=file.filename, size_mb=size_mb, metadata=meta)
 
 
