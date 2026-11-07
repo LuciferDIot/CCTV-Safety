@@ -13,7 +13,7 @@ from src.pipeline.builder import build_pipeline_components, render_evidence_card
 from src.pipeline.annotators import create_annotators
 from src.pipeline.tracker_step import detect_and_track_step
 from src.pipeline.loader import load_detection_model
-from src.pipeline.warmup import feed_warmup_observations
+from src.pipeline.warmup import step_auto_calibration
 
 
 class IntersectionSafetyPipeline:
@@ -27,8 +27,7 @@ class IntersectionSafetyPipeline:
         self.config = load_intersection_config(self.config_path)
         self.imgsz = imgsz
         base = self.config_path.parent.parent
-        self.output_dir = Path(output_dir) if output_dir else base / "data" / "output"
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = Path(output_dir or base / "data" / "output")
         self.events_dir = self.output_dir / "events"
         self.events_dir.mkdir(parents=True, exist_ok=True)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,10 +54,13 @@ class IntersectionSafetyPipeline:
             self.model, self.tracker, frame, self.road_poly, self.crosswalk_checker.crosswalk_polygons,
             self.lane_detector.lane_zones, self.crosswalk_checker.crosswalk_zones, frame_idx, self.imgsz, self.device
         )
-        if self._auto_mode and not self.lane_detector.is_calibrated:
-            feed_warmup_observations(self.lane_detector, self.road_poly, raw_hist)
-            if frame_idx >= self._warmup_frames and self.lane_detector.auto_calibrate():
-                self.ann = create_annotators(self.lane_detector.lane_zones, self.crosswalk_checker.crosswalk_zones)
+        if self._auto_mode:
+            new_ann = step_auto_calibration(
+                self.lane_detector, self.road_poly, raw_hist, frame_idx,
+                self._warmup_frames, self.crosswalk_checker.crosswalk_zones
+            )
+            if new_ann is not None:
+                self.ann = new_ann
 
         for za in self.ann.zone_annotators:
             annotated = za.annotate(scene=annotated)
@@ -91,8 +93,7 @@ class IntersectionSafetyPipeline:
             final_events, self.tracker.tracks, self.track_peak_frames,
             self.track_peak_bboxes, self.explanation_engine
         )
-        gt_path = self.config_path.parent.parent / "data" / "eval_gt.json"
-        eval_metrics = self.event_verifier.evaluate_against_ground_truth(gt_path)
+        eval_metrics = self.event_verifier.evaluate_against_ground_truth(self.config_path.parents[1] / "data" / "eval_gt.json")
         with open(self.output_dir / "evaluation_summary.json", "w", encoding="utf-8") as f:
             json.dump(eval_metrics, f, indent=2)
         return (final_events, eval_metrics)

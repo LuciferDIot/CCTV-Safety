@@ -40,3 +40,19 @@ def test_crosswalk_motion_rules():
     assert classify_crosswalk_motion(corr_speed=7.5, cw_dist_corr=100.0, min_passage_dist_px=80.0, max_walking_speed=2.5, min_riding_speed=5.0) == "CROSSWALK_RIDING"
     # Lane flow alignment
     assert is_normal_lane_transit(0.0, 10.0, [(0.0, 1.0)]) is True
+
+
+def test_kmeans_lane_auto_clustering():
+    from src.safety.lane_auto import LaneAutoDetector
+    road = [[100, 100], [900, 100], [1000, 1000], [0, 1000]]
+    detector = LaneAutoDetector(road_polygon=road, min_speed_px=2.0, min_observations=10)
+    for i in range(15):
+        detector.observe(200.0 + i, 500.0, 0.0, -10.0)
+    for i in range(15):
+        detector.observe(800.0 + i, 500.0, 0.0, 10.0)
+    lanes = detector.detect_lanes()
+    assert len(lanes) == 2
+    flows = [l.permitted_unit_vector[1] for l in lanes]
+    assert any(f < -0.8 for f in flows)
+    assert any(f > 0.8 for f in flows)
+

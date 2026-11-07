@@ -1,6 +1,24 @@
 """Annotator initializers for bounding boxes, badges, and zone visualization."""
 from typing import NamedTuple
+import numpy as np
+import cv2
 import supervision as sv
+
+
+class TranslucentZoneAnnotator:
+    """Renders polygon zones with subtle lower opacity alpha blending."""
+    def __init__(self, zone, bgr_color: tuple, thickness: int = 2, alpha: float = 0.35):
+        self.zone = zone
+        self.bgr_color = bgr_color
+        self.thickness = thickness
+        self.alpha = alpha
+
+    def annotate(self, scene: np.ndarray) -> np.ndarray:
+        poly = np.array(self.zone.polygon, dtype=np.int32)
+        overlay = scene.copy()
+        cv2.polylines(overlay, [poly], isClosed=True, color=self.bgr_color, thickness=self.thickness)
+        cv2.addWeighted(overlay, self.alpha, scene, 1.0 - self.alpha, 0, scene)
+        return scene
 
 
 class PipelineAnnotators(NamedTuple):
@@ -16,21 +34,17 @@ class PipelineAnnotators(NamedTuple):
 
 
 def create_annotators(lane_zones: list, crosswalk_zones: list) -> PipelineAnnotators:
-    """Create styled Supervision annotators for alerts, warnings, and normal traffic."""
+    """Create styled Supervision annotators for alerts, warnings, and translucent zones."""
     red_palette = sv.ColorPalette.from_hex(["#FF0000"])
     orange_palette = sv.ColorPalette.from_hex(["#FF8C00"])
     cyan_palette = sv.ColorPalette.from_hex(["#00E5FF"])
     green_palette = sv.ColorPalette.from_hex(["#00FF00"])
 
     z_annotators = [
-        sv.PolygonZoneAnnotator(
-            zone=z, color=sv.Color(r=0, g=128, b=255), thickness=2, display_in_zone_count=False
-        )
+        TranslucentZoneAnnotator(zone=z, bgr_color=(255, 128, 0), thickness=2, alpha=0.25)
         for z in lane_zones
     ] + [
-        sv.PolygonZoneAnnotator(
-            zone=z, color=sv.Color(r=0, g=229, b=255), thickness=3, display_in_zone_count=False
-        )
+        TranslucentZoneAnnotator(zone=z, bgr_color=(0, 229, 255), thickness=2, alpha=0.30)
         for z in crosswalk_zones
     ]
 

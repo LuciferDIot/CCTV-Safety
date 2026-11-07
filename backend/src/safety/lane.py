@@ -51,11 +51,10 @@ class AutoLaneDetector:
         self.is_calibrated = True
 
     def observe_warmup(self, anchor_x: float, anchor_y: float, vel_dx: float, vel_dy: float) -> None:
-        if not self.is_calibrated:
-            self._auto_detector.observe(anchor_x, anchor_y, vel_dx, vel_dy)
+        self._auto_detector.observe(anchor_x, anchor_y, vel_dx, vel_dy)
 
-    def auto_calibrate(self) -> bool:
-        if self.is_calibrated:
+    def auto_calibrate(self, force: bool = False) -> bool:
+        if self.is_calibrated and not force:
             return True
         detected = self._auto_detector.detect_lanes()
         if not detected:
