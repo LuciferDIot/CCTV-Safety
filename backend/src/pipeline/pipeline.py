@@ -8,9 +8,8 @@ import torch
 from src.config.zones import load_intersection_config
 from src.core.hud import draw_render_progress_bar
 from src.pipeline.drawer import draw_pedestrians, draw_vehicles
-from src.pipeline.safety_eval import log_candidates_for_crosswalk, check_lane_violations
+from src.pipeline.safety_eval import log_candidates_for_crosswalk, check_lane_violations, log_candidates_for_pedestrians
 from src.pipeline.builder import build_pipeline_components, render_evidence_cards
-from src.pipeline.annotators import create_annotators
 from src.pipeline.tracker_step import detect_and_track_step
 from src.pipeline.loader import load_detection_model
 from src.pipeline.warmup import step_auto_calibration
@@ -71,6 +70,7 @@ class IntersectionSafetyPipeline:
         h_peds, s_peds = self.pedestrian_checker.check_safety(
             dets, self.lane_detector.lane_zones, self.crosswalk_checker.crosswalk_zones, raw_hist, frame_idx
         )
+        log_candidates_for_pedestrians(self.event_verifier, h_peds, raw_hist, frame_idx)
         annotated = draw_pedestrians(annotated, h_peds, s_peds, self.ann)
 
         veh_dets = dets[dets.class_id != 0]

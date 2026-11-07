@@ -5,28 +5,24 @@ import supervision as sv
 
 
 def log_candidates_for_lane(
-    event_verifier: Any,
-    confirmed_tids: Set[int],
-    suspected_tids: Set[int],
-    track_hist: dict,
-    lane_id: str,
-    frame_idx: int
+    event_verifier: Any, confirmed_tids: Set[int], suspected_tids: Set[int],
+    track_hist: dict, lane_id: str, frame_idx: int
 ) -> None:
     """Log confirmed and suspected wrong-way candidate events."""
     for tid in confirmed_tids:
         pos = track_hist[tid][-1] if tid in track_hist else None
         event_verifier.log_candidate(
             track_id=tid, event_type="WRONG_WAY", frame_idx=frame_idx,
-            pos=pos, confidence=0.92, lane_or_zone=lane_id,
+            pos=pos, confidence=0.95, lane_or_zone=lane_id,
             details=f"Sustained wrong-way movement counter to flow in {lane_id}",
-            track_len=len(track_hist.get(tid, []))
+            is_ambiguous=False, track_len=len(track_hist.get(tid, []))
         )
     for tid in suspected_tids - confirmed_tids:
         pos = track_hist[tid][-1] if tid in track_hist else None
         event_verifier.log_candidate(
             track_id=tid, event_type="WRONG_WAY", frame_idx=frame_idx,
             pos=pos, confidence=0.60, lane_or_zone=lane_id,
-            details="Brief counter-flow deviation with ambiguous lane boundary or short track",
+            details="Brief counter-flow deviation near boundary or short track",
             is_ambiguous=True, track_len=len(track_hist.get(tid, []))
         )
 
@@ -47,15 +43,28 @@ def log_candidates_for_crosswalk(
             )
 
 
+def log_candidates_for_pedestrians(
+    event_verifier: Any, h_peds: sv.Detections, track_hist: dict, frame_idx: int
+) -> None:
+    """Log pedestrian roadway incursion candidates outside crosswalk."""
+    if len(h_peds) == 0 or h_peds.tracker_id is None:
+        return
+    for tid in h_peds.tracker_id:
+        if tid is None:
+            continue
+        pos = track_hist[tid][-1] if tid in track_hist else None
+        event_verifier.log_candidate(
+            track_id=int(tid), event_type="PEDESTRIAN_IN_LANE", frame_idx=frame_idx,
+            pos=pos, confidence=0.90, lane_or_zone="roadway",
+            details="Pedestrian walking in active vehicle lane outside crosswalk",
+            is_ambiguous=False, track_len=len(track_hist.get(tid, []))
+        )
+
+
 def check_lane_violations(
-    lanes: list,
-    lane_zones: list,
-    dir_checker: Any,
-    lane_detector: Any,
-    veh_dets: sv.Detections,
-    raw_hist: dict,
-    frame_idx: int,
-    event_verifier: Any
+    lanes: list, lane_zones: list, dir_checker: Any,
+    lane_detector: Any, veh_dets: sv.Detections,
+    raw_hist: dict, frame_idx: int, event_verifier: Any
 ) -> Set[int]:
     """Check all lanes for wrong-way vehicles and log events to verifier."""
     all_conf_wrong = set()
