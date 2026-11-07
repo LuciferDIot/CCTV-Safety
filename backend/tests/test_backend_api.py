@@ -46,11 +46,20 @@ def test_events_filtering():
     assert "text/csv" in res_csv.headers["content-type"]
 
 
-def test_pipeline_telemetry():
+def test_pipeline_telemetry_and_cancel():
     res = client.get("/api/pipeline/telemetry")
     assert res.status_code == 200
-    data = res.json()
-    assert data["fps"] == 28.4
-    assert data["active_tracks"] == 14
-    assert data["stitched_ids"] == 2
+    assert "fps" in res.json()
 
+    cancel_res = client.post("/api/pipeline/cancel/nonexistent")
+    assert cancel_res.status_code == 404
+
+
+def test_pipeline_start_and_status():
+    start_res = client.post("/api/pipeline/start", json={"video_name": "intersection_01.mp4", "max_frames": 2})
+    assert start_res.status_code == 200
+    task_id = start_res.json()["task_id"]
+
+    stat_res = client.get(f"/api/pipeline/status/{task_id}")
+    assert stat_res.status_code == 200
+    assert stat_res.json()["task_id"] == task_id

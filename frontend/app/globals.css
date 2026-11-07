@@ -59,3 +59,26 @@ h1, h2, p { margin: 0; } h1 { font-size: 15px; letter-spacing: -.01em; margin-to
 .toast-badge { position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: #064e3b; border: 1px solid #10b981; color: #ecfdf5; padding: 10px 16px; border-radius: 6px; font-weight: 600; font-size: 11px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px; animation: fadeIn 0.2s ease; }
 .evidence-img { width: 100%; height: 82px; object-fit: cover; border-radius: 4px; border: 1px solid #2b3844; }
 .upload-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Progress Banner & Layer Editor Extensions */
+.progress-banner { background: #0c141d; border: 1px solid #1e3a4e; border-radius: 6px; padding: 12px 16px; margin-bottom: 4px; box-shadow: 0 4px 18px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 8px; }
+.progress-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.progress-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 11px; color: #38bdf8; letter-spacing: 0.05em; }
+.progress-bar-track { width: 100%; height: 8px; background: #131c26; border-radius: 4px; overflow: hidden; border: 1px solid #233140; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8, #4ade80); transition: width 0.3s ease; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+.progress-metrics { display: flex; align-items: center; justify-content: space-between; font: 10px monospace; color: #8da0b5; flex-wrap: wrap; gap: 8px; }
+.progress-cancel-btn { background: #3f151e; border: 1px solid #7f1d1d; color: #fca5a5; padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.progress-cancel-btn:hover { background: #5a1e2a; color: #fff; }
+
+.layer-tabs { display: inline-flex; align-items: center; gap: 4px; background: #0c1219; border: 1px solid #1d2732; border-radius: 5px; padding: 2px; }
+.layer-tab-btn { background: transparent; border: 0; padding: 4px 9px; font-size: 10px; font-weight: 600; color: #7f90a6; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+.layer-tab-btn.active-road { background: #082f49; color: #38bdf8; border: 1px solid #0284c7; }
+.layer-tab-btn.active-crosswalk { background: #451a03; color: #fbbf24; border: 1px solid #b45309; }
+
+.feed-toggle-pills { display: inline-flex; align-items: center; background: #090e14; border: 1px solid #1d2633; border-radius: 5px; padding: 2px; }
+.feed-toggle-btn { background: transparent; border: 0; font-size: 9px; font-weight: 700; color: #64748b; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.05em; cursor: pointer; }
+.feed-toggle-btn.active { background: #13271f; color: #4ade80; border: 1px solid #15803d; }
+
+.render-cta-btn { background: linear-gradient(135deg, #0284c7, #2563eb); border: 1px solid #38bdf8; color: #fff; padding: 6px 12px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.render-cta-btn:hover { filter: brightness(1.15); }
+.render-cta-btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -1,11 +1,9 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown,
   Check,
   ChevronDown,
-  Download,
   Edit3,
   FileJson,
   FileSpreadsheet,
@@ -16,11 +14,15 @@ import {
   RotateCcw,
   Save,
   ScanLine,
-  SlidersHorizontal,
   Upload,
   X,
   Copy,
   Info,
+  Layers,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
 } from 'lucide-react'
 import {
   fetchVideos,
@@ -31,13 +33,18 @@ import {
   fetchTelemetry,
   fetchHealth,
   uploadVideo,
+  startPipelineJob,
+  fetchPipelineStatus,
+  cancelPipelineJob,
   getVideoStreamUrl,
   getExportUrl,
   type VideoMetadata,
   type IntersectionZonesConfig,
+  type ZonePolygon,
   type TrafficEvent,
   type TelemetryHUD,
   type SystemHealth,
+  type PipelineStatusResponse,
 } from '@/lib/api'
 
 export default function DashboardPage() {
@@ -47,6 +54,8 @@ export default function DashboardPage() {
   const [selectedEventId, setSelectedEventId] = useState<string>('EV-101')
   const [filter, setFilter] = useState<string>('All events')
   const [zones, setZones] = useState<IntersectionZonesConfig | null>(null)
+  const [lastCrosswalk, setLastCrosswalk] = useState<ZonePolygon | null>(null)
+  const [activeZoneTab, setActiveZoneTab] = useState<'road' | 'crosswalk'>('road')
   const [telemetry, setTelemetry] = useState<TelemetryHUD>({
     fps: 28.4,
     active_tracks: 14,
@@ -56,6 +65,9 @@ export default function DashboardPage() {
   })
   const [health, setHealth] = useState<SystemHealth | null>(null)
   const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [videoViewMode, setVideoViewMode] = useState<'raw' | 'analyzed'>('raw')
+  const [renderPreset, setRenderPreset] = useState<'preview' | 'full'>('preview')
+  const [activeTask, setActiveTask] = useState<PipelineStatusResponse | null>(null)
   const [drawerOpen, setDrawerOpen] = useState<boolean>(true)
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [currentTime, setCurrentTime] = useState<number>(0)
@@ -66,11 +78,24 @@ export default function DashboardPage() {
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
   }
+
+  // Determine current video stream
+  const baseVideoStem = selectedVideo.replace('_annotated.mp4', '').replace('.mp4', '')
+  const annotatedVideoName = `${baseVideoStem}_annotated.mp4`
+  const annotatedVideoExists = videos.some((v) => v.name === annotatedVideoName)
+
+  const currentStreamFile = videoViewMode === 'analyzed' && annotatedVideoExists
+    ? annotatedVideoName
+    : selectedVideo
+
+  const crosswalkEnabled = Boolean(zones && zones.crosswalks && zones.crosswalks.length > 0)
+  const isRendering = activeTask?.status === 'running'
 
   // Initial data loading
   useEffect(() => {
@@ -82,7 +107,12 @@ export default function DashboardPage() {
       .catch((err) => console.error('Failed to load videos:', err))
 
     fetchZones()
-      .then(setZones)
+      .then((z) => {
+        setZones(z)
+        if (z.crosswalks && z.crosswalks.length > 0) {
+          setLastCrosswalk(z.crosswalks[0])
+        }
+      })
       .catch((err) => console.error('Failed to load zones:', err))
 
     fetchHealth()
@@ -93,7 +123,7 @@ export default function DashboardPage() {
   // Poll telemetry every 2.5 seconds
   useEffect(() => {
     const loadTelem = () => {
-      fetchTelemetry().then(setTelemetry).catch(() => { })
+      fetchTelemetry().then(setTelemetry).catch(() => {})
     }
     loadTelem()
     const interval = setInterval(loadTelem, 2500)
@@ -111,6 +141,13 @@ export default function DashboardPage() {
       })
       .catch((err) => console.error('Failed to load events:', err))
   }, [filter])
+
+  // Clean up poll interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    }
+  }, [])
 
   const selectedEvent = useMemo(() => {
     return events.find((e) => e.event_id === selectedEventId) || events[0] || null
@@ -139,14 +176,16 @@ export default function DashboardPage() {
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime)
-      if (videoRef.current.duration) setDuration(videoRef.current.duration)
+      setDuration(videoRef.current.duration || 0)
     }
   }
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const t = parseFloat(e.target.value)
-    setCurrentTime(t)
-    if (videoRef.current) videoRef.current.currentTime = t
+    const target = parseFloat(e.target.value)
+    if (videoRef.current) {
+      videoRef.current.currentTime = target
+      setCurrentTime(target)
+    }
   }
 
   const jumpToTime = (seconds: number) => {
@@ -168,6 +207,7 @@ export default function DashboardPage() {
       const updated = await fetchVideos()
       setVideos(updated)
       setSelectedVideo(res.filename)
+      setVideoViewMode('raw')
     } catch (err: any) {
       showToast(`Upload failed: ${err.message}`)
     } finally {
@@ -176,12 +216,36 @@ export default function DashboardPage() {
     }
   }
 
+  // Crosswalk enable/disable toggle
+  const handleToggleCrosswalk = (enabled: boolean) => {
+    if (!zones) return
+    if (enabled) {
+      const restored = lastCrosswalk || {
+        id: 'crosswalk_top',
+        polygon: [
+          [3022, 351],
+          [1292, 351],
+          [1088, 675],
+          [3304, 672],
+        ],
+      }
+      setZones({ ...zones, crosswalks: [restored] })
+      showToast('Crosswalk monitoring enabled')
+    } else {
+      if (zones.crosswalks && zones.crosswalks.length > 0) {
+        setLastCrosswalk(zones.crosswalks[0])
+      }
+      setZones({ ...zones, crosswalks: [] })
+      showToast('Crosswalk monitoring disabled')
+    }
+  }
+
   const handleSaveZones = async () => {
     if (!zones) return
     try {
       const saved = await saveZones(zones)
       setZones(saved)
-      showToast('Zones configuration saved to zones.json!')
+      showToast('Zones configuration saved to configs/zones.json!')
       setMode('view')
     } catch (err: any) {
       showToast(`Save failed: ${err.message}`)
@@ -192,9 +256,59 @@ export default function DashboardPage() {
     try {
       const res = await resetZones()
       setZones(res)
+      if (res.crosswalks && res.crosswalks.length > 0) {
+        setLastCrosswalk(res.crosswalks[0])
+      }
       showToast('Zones restored to default coordinates.')
     } catch (err: any) {
       showToast(`Reset failed: ${err.message}`)
+    }
+  }
+
+  // Video Rendering Trigger
+  const handleStartRender = async () => {
+    if (isRendering) return
+    try {
+      const maxFr = renderPreset === 'preview' ? 100 : null
+      const initialTask = await startPipelineJob(selectedVideo, maxFr)
+      setActiveTask(initialTask)
+      showToast(`Started rendering (${renderPreset === 'preview' ? 'Fast 100 frames' : 'Full video'})`)
+
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const status = await fetchPipelineStatus(initialTask.task_id)
+          setActiveTask(status)
+          if (status.status === 'completed') {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+            showToast('Video analysis complete! Switched to AI Analyzed view.')
+            const updatedVideos = await fetchVideos()
+            setVideos(updatedVideos)
+            setVideoViewMode('analyzed')
+            const updatedEvents = await fetchEvents(filter)
+            setEvents(updatedEvents)
+          } else if (status.status === 'failed' || status.status === 'cancelled') {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+            showToast(`Rendering ${status.status}: ${status.error || ''}`)
+          }
+        } catch {
+          // ignore transient poll error
+        }
+      }, 450)
+    } catch (err: any) {
+      showToast(`Failed to start render: ${err.message}`)
+    }
+  }
+
+  const handleCancelRender = async () => {
+    if (!activeTask) return
+    try {
+      const res = await cancelPipelineJob(activeTask.task_id)
+      setActiveTask(res)
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      showToast('Render cancelled.')
+    } catch (err: any) {
+      showToast(`Cancel failed: ${err.message}`)
     }
   }
 
@@ -205,11 +319,19 @@ export default function DashboardPage() {
     const rect = svg.getBoundingClientRect()
     const x = Math.round(((e.clientX - rect.left) / rect.width) * 3840)
     const y = Math.round(((e.clientY - rect.top) / rect.height) * 2160)
+    const clampedX = Math.max(0, Math.min(3840, x))
+    const clampedY = Math.max(0, Math.min(2160, y))
 
-    if (draggingVertex.zone === 'crosswalk' && zones.crosswalks.length > 0) {
+    if (draggingVertex.zone === 'road' && zones.road?.polygon) {
+      const updatedRoad = { ...zones.road }
+      const pts = [...updatedRoad.polygon]
+      pts[draggingVertex.index] = [clampedX, clampedY]
+      updatedRoad.polygon = pts
+      setZones({ ...zones, road: updatedRoad })
+    } else if (draggingVertex.zone === 'crosswalk' && zones.crosswalks && zones.crosswalks.length > 0) {
       const updatedCw = [...zones.crosswalks]
       const pts = [...updatedCw[0].polygon]
-      pts[draggingVertex.index] = [Math.max(0, Math.min(3840, x)), Math.max(0, Math.min(2160, y))]
+      pts[draggingVertex.index] = [clampedX, clampedY]
       updatedCw[0] = { ...updatedCw[0], polygon: pts }
       setZones({ ...zones, crosswalks: updatedCw })
     }
@@ -260,7 +382,10 @@ export default function DashboardPage() {
           <div className="clip-select">
             <select
               value={selectedVideo}
-              onChange={(e) => setSelectedVideo(e.target.value)}
+              onChange={(e) => {
+                setSelectedVideo(e.target.value)
+                setVideoViewMode('raw')
+              }}
               title="Select camera video stream"
             >
               {videos.map((v) => (
@@ -288,7 +413,31 @@ export default function DashboardPage() {
             disabled={isUploading}
             style={{ border: '1px solid #26303c', padding: '7px 10px', fontSize: 11, gap: 6, display: 'inline-flex' }}
           >
-            <Upload size={14} /> {isUploading ? 'Uploading...' : 'Upload Video'}
+            <Upload size={14} /> {isUploading ? 'Uploading...' : 'Upload'}
+          </button>
+
+          {/* Render Preset & Start Button */}
+          <div className="clip-select" style={{ padding: '4px 6px' }}>
+            <select
+              value={renderPreset}
+              onChange={(e) => setRenderPreset(e.target.value as any)}
+              title="Select rendering frame limit"
+              style={{ fontSize: 10, maxWidth: 130 }}
+            >
+              <option value="preview">Fast Preview (100 fr)</option>
+              <option value="full">Full Video (All fr)</option>
+            </select>
+            <ChevronDown size={12} />
+          </div>
+
+          <button
+            className="render-cta-btn"
+            onClick={handleStartRender}
+            disabled={isRendering}
+            title="Trigger AI detection, ByteTrack tracking, and safety rule analysis"
+          >
+            {isRendering ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+            {isRendering ? 'Rendering...' : 'Render Video'}
           </button>
 
           {/* View / Edit Mode Toggle */}
@@ -303,17 +452,17 @@ export default function DashboardPage() {
               className={mode === 'edit' ? 'active' : ''}
               onClick={() => setMode('edit')}
             >
-              <Edit3 size={13} /> Edit Zones & Directions
+              <Edit3 size={13} /> Edit Zones
             </button>
           </div>
 
           {/* Machine-Readable Export Buttons */}
           <div className="export-actions">
             <a href={getExportUrl('json')} download="detected_events.json" style={{ textDecoration: 'none' }}>
-              <button title="Export events JSON"><FileJson size={14} /> Export JSON</button>
+              <button title="Export events JSON"><FileJson size={14} /> JSON</button>
             </a>
             <a href={getExportUrl('csv')} download="detected_events.csv" style={{ textDecoration: 'none' }}>
-              <button title="Export events CSV"><FileSpreadsheet size={14} /> Export CSV</button>
+              <button title="Export events CSV"><FileSpreadsheet size={14} /> CSV</button>
             </a>
           </div>
         </div>
@@ -322,7 +471,7 @@ export default function DashboardPage() {
       {/* 2. TELEMETRY BAR & HUD */}
       <div className="telemetry-bar">
         <div className="telemetry-context">
-          <span className="green-dot" /> ANALYSIS RUNNING
+          <span className="green-dot" /> SYSTEM ACTIVE
           <span className="telemetry-divider" />
           <span>Device: <strong style={{ color: '#93c5fd' }}>{health?.device?.toUpperCase() || 'CPU'}</strong></span>
           <span className="telemetry-divider" />
@@ -356,25 +505,121 @@ export default function DashboardPage() {
       {/* WORKSPACE: Center Canvas + Right Sidebar */}
       <div className="workspace">
         <div className="main-column">
+          {/* INLINE RENDERING PROGRESS BANNER */}
+          {activeTask && (
+            <div className="progress-banner">
+              <div className="progress-top">
+                <div className="progress-title">
+                  {activeTask.status === 'running' && <Loader2 size={15} className="animate-spin" />}
+                  {activeTask.status === 'completed' && <CheckCircle2 size={15} style={{ color: '#4ade80' }} />}
+                  {activeTask.status === 'failed' && <AlertCircle size={15} style={{ color: '#fb7185' }} />}
+                  {activeTask.status === 'cancelled' && <AlertCircle size={15} style={{ color: '#fbbf24' }} />}
+                  <span>
+                    {activeTask.status === 'running' && `AI RENDERING IN PROGRESS · ${activeTask.progress_pct.toFixed(0)}%`}
+                    {activeTask.status === 'completed' && `ANALYSIS & ANNOTATED VIDEO READY (100%)`}
+                    {activeTask.status === 'cancelled' && `ANALYSIS JOB CANCELLED`}
+                    {activeTask.status === 'failed' && `ANALYSIS FAILED: ${activeTask.error || 'Execution error'}`}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {activeTask.status === 'running' && (
+                    <button className="progress-cancel-btn" onClick={handleCancelRender}>
+                      <X size={12} /> Cancel Render
+                    </button>
+                  )}
+                  {activeTask.status !== 'running' && (
+                    <button className="icon-button" onClick={() => setActiveTask(null)} title="Dismiss banner">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${Math.min(100, activeTask.progress_pct)}%` }} />
+              </div>
+
+              <div className="progress-metrics">
+                <span>Frame: <strong style={{ color: '#f1f5f9' }}>{activeTask.current_frame}</strong> / {activeTask.total_frames}</span>
+                <span>Speed: <strong style={{ color: '#4ade80' }}>{activeTask.fps.toFixed(1)} FPS</strong></span>
+                <span>Elapsed: <strong style={{ color: '#93c5fd' }}>{activeTask.elapsed_seconds.toFixed(1)}s</strong></span>
+                {activeTask.eta_seconds != null && activeTask.status === 'running' && (
+                  <span>ETA: <strong style={{ color: '#fbbf24' }}>{activeTask.eta_seconds.toFixed(0)}s left</strong></span>
+                )}
+                <span>Violations Found: <strong style={{ color: '#fb7185' }}>{activeTask.events_detected}</strong></span>
+              </div>
+            </div>
+          )}
+
           {/* CENTER PLAYBACK CANVAS */}
           <section className="canvas-card">
             <div className="canvas-toolbar">
               <div className="canvas-label">
                 <ScanLine size={15} />
-                <span>CAMERA FEED: {selectedVideo.replace('.mp4', '').toUpperCase()}</span>
-                <span className="live-pill"><i /> LIVE</span>
+                <span>FEED: {baseVideoStem.toUpperCase()}</span>
+                {/* Raw vs Analyzed Toggle */}
+                <div className="feed-toggle-pills" style={{ marginLeft: 8 }}>
+                  <button
+                    className={`feed-toggle-btn ${videoViewMode === 'raw' ? 'active' : ''}`}
+                    onClick={() => setVideoViewMode('raw')}
+                  >
+                    RAW CCTV FEED
+                  </button>
+                  <button
+                    className={`feed-toggle-btn ${videoViewMode === 'analyzed' ? 'active' : ''}`}
+                    onClick={() => {
+                      if (!annotatedVideoExists) {
+                        showToast(`No annotated video yet for ${selectedVideo}. Click 'Render Video' first.`)
+                      }
+                      setVideoViewMode('analyzed')
+                    }}
+                    title={annotatedVideoExists ? 'Switch to AI analyzed video with bounding boxes & HUD' : 'Run render to generate annotated output'}
+                  >
+                    AI ANALYZED {annotatedVideoExists ? '●' : ''}
+                  </button>
+                </div>
               </div>
 
               <div className="canvas-actions">
                 {mode === 'edit' && (
                   <>
+                    {/* Layer Tabs: Road vs Crosswalk */}
+                    <div className="layer-tabs">
+                      <button
+                        className={`layer-tab-btn ${activeZoneTab === 'road' ? 'active-road' : ''}`}
+                        onClick={() => setActiveZoneTab('road')}
+                      >
+                        Road Polygon
+                      </button>
+                      <button
+                        className={`layer-tab-btn ${activeZoneTab === 'crosswalk' ? 'active-crosswalk' : ''}`}
+                        onClick={() => setActiveZoneTab('crosswalk')}
+                      >
+                        Crosswalk
+                      </button>
+                    </div>
+
+                    {/* Crosswalk Enable/Disable Toggle */}
+                    {activeZoneTab === 'crosswalk' && (
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: '#fcd34d', cursor: 'pointer', marginLeft: 4 }}>
+                        <input
+                          type="checkbox"
+                          checked={crosswalkEnabled}
+                          onChange={(e) => handleToggleCrosswalk(e.target.checked)}
+                          style={{ accentColor: '#fbbf24' }}
+                        />
+                        Enable Monitoring
+                      </label>
+                    )}
+
                     <button
                       className="icon-button"
-                      style={{ color: '#38bdf8', border: '1px solid #0369a1', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5 }}
+                      style={{ color: '#38bdf8', border: '1px solid #0369a1', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5, marginLeft: 6 }}
                       onClick={handleSaveZones}
                       title="Save modified zones to configs/zones.json"
                     >
-                      <Save size={13} /> Save Config JSON
+                      <Save size={13} /> Save Config
                     </button>
                     <button
                       className="icon-button"
@@ -404,8 +649,9 @@ export default function DashboardPage() {
             <div className="feed-viewport">
               {/* CCTV Video Streaming */}
               <video
+                key={currentStreamFile}
                 ref={videoRef}
-                src={getVideoStreamUrl(selectedVideo)}
+                src={getVideoStreamUrl(currentStreamFile)}
                 className="video-player"
                 playsInline
                 muted
@@ -425,38 +671,58 @@ export default function DashboardPage() {
                 {zones?.road?.polygon && (
                   <polygon
                     points={zones.road.polygon.map((p) => p.join(',')).join(' ')}
-                    fill="rgba(56, 189, 248, 0.05)"
+                    fill={mode === 'edit' && activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
                     stroke="#38bdf8"
-                    strokeWidth="4"
+                    strokeWidth={mode === 'edit' && activeZoneTab === 'road' ? '8' : '4'}
                     strokeDasharray="16 8"
                   />
                 )}
 
-                {/* Crosswalk Polygon Zone */}
-                {zones?.crosswalks?.[0]?.polygon && (
+                {/* Crosswalk Polygon Zone (if enabled) */}
+                {crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
                   <polygon
                     points={zones.crosswalks[0].polygon.map((p) => p.join(',')).join(' ')}
-                    fill="rgba(251, 191, 36, 0.12)"
+                    fill={mode === 'edit' && activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
                     stroke="#fbbf24"
-                    strokeWidth="6"
+                    strokeWidth={mode === 'edit' && activeZoneTab === 'crosswalk' ? '10' : '6'}
                   />
                 )}
 
-                {/* Draggable Crosswalk Vertices (Edit Mode) */}
-                {mode === 'edit' &&
-                  zones?.crosswalks?.[0]?.polygon?.map(([x, y], idx) => (
-                    <g key={idx}>
+                {/* Draggable Road Vertices (Edit Mode - Road Active) */}
+                {mode === 'edit' && activeZoneTab === 'road' &&
+                  zones?.road?.polygon?.map(([x, y], idx) => (
+                    <g key={`road-${idx}`}>
                       <circle
                         cx={x}
                         cy={y}
-                        r="35"
+                        r="38"
                         fill="#0b1115"
                         stroke="#38bdf8"
-                        strokeWidth="8"
+                        strokeWidth="9"
+                        style={{ cursor: 'grab' }}
+                        onPointerDown={() => setDraggingVertex({ zone: 'road', index: idx })}
+                      />
+                      <text x={x + 48} y={y + 14} fill="#38bdf8" fontSize="40" fontFamily="monospace" fontWeight="bold">
+                        R{idx + 1}
+                      </text>
+                    </g>
+                  ))}
+
+                {/* Draggable Crosswalk Vertices (Edit Mode - Crosswalk Active) */}
+                {mode === 'edit' && activeZoneTab === 'crosswalk' && crosswalkEnabled &&
+                  zones?.crosswalks?.[0]?.polygon?.map(([x, y], idx) => (
+                    <g key={`cw-${idx}`}>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r="38"
+                        fill="#0b1115"
+                        stroke="#fbbf24"
+                        strokeWidth="9"
                         style={{ cursor: 'grab' }}
                         onPointerDown={() => setDraggingVertex({ zone: 'crosswalk', index: idx })}
                       />
-                      <text x={x + 45} y={y + 12} fill="#38bdf8" fontSize="36" fontFamily="monospace" fontWeight="bold">
+                      <text x={x + 48} y={y + 14} fill="#fbbf24" fontSize="40" fontFamily="monospace" fontWeight="bold">
                         P{idx + 1}
                       </text>
                     </g>
@@ -471,10 +737,9 @@ export default function DashboardPage() {
                   </text>
                 </g>
 
-                {/* Active Event Bounding Box and Trajectory Polyline */}
-                {selectedEvent && (
+                {/* Active Event Bounding Box in raw view mode */}
+                {selectedEvent && videoViewMode === 'raw' && (
                   <g>
-                    {/* Simulated Vehicle Bounding Box centered on CCTV scene */}
                     <rect
                       x="1850"
                       y="1100"
@@ -500,162 +765,272 @@ export default function DashboardPage() {
                 )}
               </svg>
 
-              {/* Scrubber Timeline Bar */}
+              {/* VIDEO SCRUBBER BAR */}
               <div className="video-scrubber-bar">
                 <button
-                  className="icon-button"
                   onClick={togglePlay}
-                  style={{ color: '#4ade80', background: '#132c1e', padding: 6, borderRadius: '50%' }}
+                  className="icon-button"
+                  style={{ color: '#4ade80', background: 'rgba(16,37,26,0.85)', padding: 7, borderRadius: '50%' }}
                   aria-label={isPlaying ? 'Pause' : 'Play'}
                 >
-                  {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
                 </button>
-                <span className="time-display">{formatSecs(currentTime)}</span>
+
+                <div className="time-display">
+                  <span>{formatSecs(currentTime)}</span> / <span>{formatSecs(duration)}</span>
+                </div>
+
                 <input
                   type="range"
                   min="0"
                   max={duration || 100}
-                  step="0.1"
+                  step="0.05"
                   value={currentTime}
                   onChange={handleSeek}
                   className="scrubber-slider"
+                  aria-label="Video scrubber"
                 />
-                <span className="time-display">{formatSecs(duration)}</span>
+
+                <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6ee7b7' }}>
+                  {videoViewMode === 'analyzed' ? 'AI ANNOTATED STREAM' : 'RAW CCTV STREAM'}
+                </span>
+              </div>
+            </div>
+
+            {/* CANVAS FOOTER / LEGEND */}
+            <div className="canvas-footer">
+              <div>
+                <span className="legend-line" style={{ background: '#38bdf8' }} />
+                <span>Road ROI ({zones?.road?.polygon?.length || 4} vertices)</span>
+              </div>
+              <div>
+                <span className="legend-line" style={{ background: crosswalkEnabled ? '#fbbf24' : '#475569' }} />
+                <span>{crosswalkEnabled ? 'Crosswalk Zone (Active)' : 'Crosswalk (Disabled)'}</span>
+              </div>
+              <div>
+                <span className="legend-line green" />
+                <span>Permitted Flow Vector</span>
+              </div>
+              <div className="canvas-resolution">
+                3840×2160 UHD · Native Coordinate Mapping
               </div>
             </div>
           </section>
 
-          {/* 4. BOTTOM EVIDENCE DRAWER */}
-          {selectedEvent && drawerOpen && (
+          {/* 4. TEMPORAL EVIDENCE REVIEW DRAWER */}
+          {drawerOpen ? (
             <section className="evidence-drawer">
               <div className="drawer-header">
                 <div>
-                  <div className="eyebrow">EVIDENCE REVIEW / {selectedEvent.event_id}</div>
+                  <div className="eyebrow">TEMPORAL EVIDENCE STRIP REVIEW</div>
                   <h2>
-                    {selectedEvent.event_type.replace(/_/g, ' ')}{' '}
-                    <span>· Track #{selectedEvent.track_ids.join(' → #')} {selectedEvent.stitched && '(Stitched ID)'}</span>
+                    {selectedEvent ? selectedEvent.event_id : 'NO EVENT SELECTED'}{' '}
+                    <span>
+                      {selectedEvent
+                        ? `· Track #${selectedEvent.track_ids.join(', #')} · ${selectedEvent.event_type}`
+                        : ''}
+                    </span>
                   </h2>
                 </div>
+
                 <div className="drawer-header-actions">
-                  <span className={`status-badge ${getTone(selectedEvent.status)}`}>
-                    <span className="status-dot" /> {selectedEvent.status}
-                  </span>
-                  <button className="icon-button" onClick={() => setDrawerOpen(false)} aria-label="Close drawer">
-                    <X size={16} />
+                  {selectedEvent && (
+                    <span className={`status-badge ${getTone(selectedEvent.status)}`}>
+                      <span className="status-dot" />
+                      {selectedEvent.status}
+                    </span>
+                  )}
+                  <button
+                    className="icon-button"
+                    onClick={() => setDrawerOpen(false)}
+                    title="Minimize evidence drawer"
+                  >
+                    <X size={15} />
                   </button>
                 </div>
               </div>
 
-              {/* 3-Frame Temporal Strip */}
+              {/* 3-FRAME TEMPORAL STRIP */}
               <div className="evidence-grid">
-                {[
-                  { label: 'Entry Frame', key: 'entry', time: formatSecs(selectedEvent.time_start) },
-                  { label: 'Midpoint Peak', key: 'midpoint', time: formatSecs((selectedEvent.time_start + selectedEvent.time_end) / 2) },
-                  { label: 'Exit Frame', key: 'exit', time: formatSecs(selectedEvent.time_end) },
-                ].map(({ label, key, time }, idx) => (
-                  <div className="evidence-frame" key={key}>
+                <div className="evidence-frame">
+                  {selectedEvent?.evidence.entry_frame_url ? (
+                    <img
+                      src={selectedEvent.evidence.entry_frame_url}
+                      alt="Entry Frame"
+                      className="evidence-img"
+                    />
+                  ) : (
                     <div className="mini-scene">
-                      <img
-                        src={`/api/events/${selectedEvent.event_id}/frames/${key}`}
-                        alt={`${label} evidence`}
-                        className="evidence-img"
-                        onError={(e) => {
-                          // Fallback display if specific image file is not on disk
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                      <div className="mini-track" style={{ left: `${25 + idx * 22}%`, top: '40%', borderColor: getColor(selectedEvent.status) }}>
-                        <span>T-#{selectedEvent.track_ids[0] || '10'}</span>
+                      <div className="mini-road" />
+                      <div className="mini-crosswalk" />
+                      <div className="mini-track" style={{ left: '42%', top: '48%', borderColor: '#38bdf8' }}>
+                        <span>T-14</span>
                       </div>
-                      <span className="mini-time">{time}</span>
+                      <div className="mini-time">t=0.0s</div>
                     </div>
-                    <div className="frame-label">
-                      <span>0{idx + 1}</span> {label}
-                    </div>
+                  )}
+                  <div className="frame-label">
+                    <span>ENTRY FRAME</span> · Ground Contact Point
                   </div>
-                ))}
+                </div>
+
+                <div className="evidence-frame">
+                  {selectedEvent?.evidence.midpoint_peak_url ? (
+                    <img
+                      src={selectedEvent.evidence.midpoint_peak_url}
+                      alt="Peak Evidence"
+                      className="evidence-img"
+                    />
+                  ) : (
+                    <div className="mini-scene">
+                      <div className="mini-road" />
+                      <div className="mini-crosswalk" />
+                      <div className="mini-track" style={{ left: '50%', top: '50%', borderColor: getColor(selectedEvent?.status || '') }}>
+                        <span>T-14</span>
+                      </div>
+                      <div className="mini-time">t=0.7s</div>
+                    </div>
+                  )}
+                  <div className="frame-label">
+                    <span>MIDPOINT / PEAK</span> · Violation Evaluation
+                  </div>
+                </div>
+
+                <div className="evidence-frame">
+                  {selectedEvent?.evidence.exit_frame_url ? (
+                    <img
+                      src={selectedEvent.evidence.exit_frame_url}
+                      alt="Exit Frame"
+                      className="evidence-img"
+                    />
+                  ) : (
+                    <div className="mini-scene">
+                      <div className="mini-road" />
+                      <div className="mini-crosswalk" />
+                      <div className="mini-track" style={{ left: '60%', top: '53%', borderColor: '#4ade80' }}>
+                        <span>T-14</span>
+                      </div>
+                      <div className="mini-time">t=1.4s</div>
+                    </div>
+                  )}
+                  <div className="frame-label">
+                    <span>EXIT FRAME</span> · Trajectory Clearance
+                  </div>
+                </div>
               </div>
 
-              {/* Displacement Alignment & Posture Metrics */}
+              {/* KINEMATIC & EXPLANATION DETAILS */}
               <div className="drawer-detail">
                 <div className="vector-explanation">
                   <div className="detail-heading">
-                    <span className="detail-icon"><ArrowDown size={14} /></span>
-                    <span>TRAJECTORY & POSTURE KINEMATICS</span>
+                    <span className="detail-icon"><Info size={11} /></span>
+                    SAFETY VERIFICATION & TRAJECTORY EXPLANATION
                   </div>
-                  <p>{selectedEvent.explanation || 'Trajectory evaluated against configured intersection zones.'}</p>
-
+                  <p>
+                    {selectedEvent?.explanation ||
+                      'Vehicle trajectory evaluated with homography perspective scaling. Heading vector sustained across temporal confirmation window.'}
+                  </p>
                   <div className="vector-stats">
                     <div>
-                      <span>Confidence</span>
-                      <strong style={{ color: '#4ade80' }}>{Math.round(selectedEvent.confidence * 100)}%</strong>
-                    </div>
-                    <div>
-                      <span>Posture</span>
-                      <strong style={{ color: selectedEvent.posture_metrics.posture === 'dismounted' ? '#34d399' : '#fb7185' }}>
-                        {selectedEvent.posture_metrics.posture?.toUpperCase() || 'MOUNTED'}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Speed</span>
+                      <span>Observed Angle</span>
                       <strong>
-                        {selectedEvent.posture_metrics.speed_px_per_frame
-                          ? `${selectedEvent.posture_metrics.speed_px_per_frame} px/f`
-                          : '7.2 px/f'}
+                        {selectedEvent?.metrics.angle_deg != null
+                          ? `${selectedEvent.metrics.angle_deg.toFixed(1)}°`
+                          : '168.4°'}
                       </strong>
                     </div>
                     <div>
-                      <span>Window</span>
-                      <strong>{formatSecs(selectedEvent.time_start)} – {formatSecs(selectedEvent.time_end)}</strong>
+                      <span>Rule Window</span>
+                      <strong>
+                        {selectedEvent?.metrics.rule_window || '180° ± 45°'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Confidence</span>
+                      <strong style={{ color: '#4ade80' }}>
+                        {selectedEvent ? `${Math.round(selectedEvent.confidence * 100)}%` : '96%'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Rider Posture</span>
+                      <strong style={{ color: selectedEvent?.posture_metrics.posture === 'DISMOUNTED' ? '#34d399' : '#fb7185' }}>
+                        {selectedEvent?.posture_metrics.posture || 'MOUNTED'}
+                      </strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Raw JSON Inspector */}
                 <div className="json-preview">
                   <div className="detail-heading">
-                    <FileJson size={14} />
-                    <span>RAW EVENT PAYLOAD</span>
+                    <span>RAW EVENT AUDIT RECORD</span>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(JSON.stringify(selectedEvent.raw_json, null, 2))
-                        showToast('Event JSON copied to clipboard!')
+                        if (selectedEvent) {
+                          navigator.clipboard.writeText(JSON.stringify(selectedEvent.raw_json, null, 2))
+                          showToast('Copied JSON audit record to clipboard!')
+                        }
                       }}
-                      title="Copy JSON"
+                      title="Copy JSON to clipboard"
                     >
                       <Copy size={13} />
                     </button>
                   </div>
-                  <pre>{JSON.stringify(selectedEvent.raw_json, null, 2)}</pre>
+                  <pre>
+                    {selectedEvent
+                      ? JSON.stringify(selectedEvent.raw_json, null, 2)
+                      : '// No event record selected'}
+                  </pre>
                 </div>
               </div>
             </section>
-          )}
-
-          {!drawerOpen && selectedEvent && (
-            <button className="reopen-drawer" onClick={() => setDrawerOpen(true)}>
-              <ChevronDown size={14} /> Show evidence for {selectedEvent.event_id}
+          ) : (
+            <button
+              className="reopen-drawer"
+              onClick={() => setDrawerOpen(true)}
+            >
+              <Eye size={13} /> View 3-Frame Temporal Evidence Strip & Kinematics ({selectedEvent?.event_id})
             </button>
           )}
         </div>
 
-        {/* 3. RIGHT SIDEBAR EVENT LIST */}
+        {/* 5. RIGHT SIDEBAR: LIVE EVENT FEED */}
         <aside className="event-sidebar">
           <div className="sidebar-head">
             <div>
-              <div className="eyebrow">DETECTION LOG</div>
-              <h2>Event Feed <span>{events.length}</span></h2>
+              <div className="eyebrow">AUDIT RECORD FEED</div>
+              <h2>
+                Safety Events <span>{events.length}</span>
+              </h2>
             </div>
-            <button className="icon-button" title="Event settings"><SlidersHorizontal size={15} /></button>
+            <button
+              className="icon-button"
+              title="Refresh event records"
+              onClick={() => {
+                fetchEvents(filter).then(setEvents).catch(console.error)
+                showToast('Refreshed event feed.')
+              }}
+            >
+              <RotateCcw size={14} />
+            </button>
           </div>
 
+          {/* SUMMARY BADGES */}
           <div className="feed-summary">
-            <div><strong style={{ color: '#fb7185' }}>{String(summary.violations).padStart(2, '0')}</strong><span>violations</span></div>
-            <div><strong style={{ color: '#34d399' }}>{String(summary.exempted).padStart(2, '0')}</strong><span>exempted</span></div>
-            <div><strong style={{ color: '#fbbf24' }}>{String(summary.review).padStart(2, '0')}</strong><span>review</span></div>
+            <div>
+              <strong style={{ color: '#fb7185' }}>{summary.violations}</strong>
+              <span>Violations</span>
+            </div>
+            <div>
+              <strong style={{ color: '#34d399' }}>{summary.exempted}</strong>
+              <span>Exempted</span>
+            </div>
+            <div>
+              <strong style={{ color: '#fbbf24' }}>{summary.review}</strong>
+              <span>Review</span>
+            </div>
           </div>
 
-          {/* Filter Dropdown */}
+          {/* FILTER DROPDOWN */}
           <div className="filter-row">
             <Filter size={13} />
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -668,46 +1043,56 @@ export default function DashboardPage() {
             <ChevronDown size={13} />
           </div>
 
-          {/* Filtered Event Cards */}
+          {/* EVENT CARDS LIST */}
           <div className="event-list">
-            {events.map((ev) => (
-              <button
-                key={ev.event_id}
-                className={`event-item ${selectedEvent?.event_id === ev.event_id ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedEventId(ev.event_id)
-                  setDrawerOpen(true)
-                  if (ev.time_start) jumpToTime(ev.time_start)
-                }}
-              >
-                <div className="event-top">
-                  <span className="event-id">{ev.event_id}</span>
-                  <span className="event-time">{formatSecs(ev.time_start)}</span>
-                </div>
-                <div className="event-title">
-                  <span className="severity-bar" style={{ background: getColor(ev.status) }} />
-                  {ev.event_type.replace(/_/g, ' ')}
-                </div>
-                <div className="event-meta">
-                  <span>Track #{ev.track_ids.join(', #')}</span>
-                  <span className="rule-code">{ev.posture_metrics.posture || 'VEHICLE'}</span>
-                  <strong>{Math.round(ev.confidence * 100)}%</strong>
-                </div>
-                <span className={`status-badge ${getTone(ev.status)}`}>
-                  <span className="status-dot" /> {ev.status}
-                </span>
-              </button>
-            ))}
+            {events.map((ev) => {
+              const tone = getTone(ev.status)
+              const isSelected = ev.event_id === selectedEventId
+              return (
+                <button
+                  key={ev.event_id}
+                  className={`event-item ${isSelected ? 'selected' : ''}`}
+                  onClick={() => {
+                    setSelectedEventId(ev.event_id)
+                    setDrawerOpen(true)
+                    jumpToTime(ev.time_start)
+                  }}
+                >
+                  <div className="event-top">
+                    <span className="event-id">{ev.event_id}</span>
+                    <span className="event-time">{formatSecs(ev.time_start)}</span>
+                  </div>
+
+                  <div className="event-title">
+                    <span
+                      className="severity-bar"
+                      style={{ background: getColor(ev.status) }}
+                    />
+                    <span>{ev.event_type}</span>
+                  </div>
+
+                  <div className="event-meta">
+                    <span className="rule-code">TRK-{ev.track_ids.join(',')}</span>
+                    <span className={`status-badge ${tone}`}>
+                      <span className="status-dot" />
+                      {ev.status}
+                    </span>
+                    <strong>{Math.round(ev.confidence * 100)}%</strong>
+                  </div>
+                </button>
+              )
+            })}
 
             {events.length === 0 && (
-              <div style={{ padding: '24px 16px', color: '#64748b', textAlign: 'center' }}>
-                No events found matching filter.
+              <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>
+                No events match filter &quot;{filter}&quot;
               </div>
             )}
           </div>
 
           <div className="sidebar-footer">
-            <Info size={13} /> Click an event to seek video & inspect 3-frame evidence
+            <div className="green-dot" />
+            <span>Temporal FSM Engine Connected</span>
           </div>
         </aside>
       </div>

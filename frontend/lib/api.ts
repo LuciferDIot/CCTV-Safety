@@ -90,6 +90,20 @@ export interface SystemHealth {
   uptime_seconds: number
 }
 
+export interface PipelineStatusResponse {
+  task_id: string
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled' | string
+  progress_pct: number
+  current_frame: number
+  total_frames: number
+  fps: number
+  elapsed_seconds: number
+  eta_seconds?: number | null
+  events_detected: number
+  output_video?: string | null
+  error?: string | null
+}
+
 const API_BASE = '/api'
 
 export async function fetchHealth(): Promise<SystemHealth> {
@@ -153,6 +167,33 @@ export async function fetchTelemetry(): Promise<TelemetryHUD> {
   return res.json()
 }
 
+export async function startPipelineJob(
+  videoName: string,
+  maxFrames?: number | null
+): Promise<PipelineStatusResponse> {
+  const res = await fetch(`${API_BASE}/pipeline/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ video_name: videoName, max_frames: maxFrames || undefined }),
+  })
+  if (!res.ok) throw new Error(`Failed to start pipeline: ${res.statusText}`)
+  return res.json()
+}
+
+export async function fetchPipelineStatus(taskId: string): Promise<PipelineStatusResponse> {
+  const res = await fetch(`${API_BASE}/pipeline/status/${encodeURIComponent(taskId)}`)
+  if (!res.ok) throw new Error(`Failed to fetch status: ${res.statusText}`)
+  return res.json()
+}
+
+export async function cancelPipelineJob(taskId: string): Promise<PipelineStatusResponse> {
+  const res = await fetch(`${API_BASE}/pipeline/cancel/${encodeURIComponent(taskId)}`, {
+    method: 'POST',
+  })
+  if (!res.ok) throw new Error(`Failed to cancel pipeline: ${res.statusText}`)
+  return res.json()
+}
+
 export function getExportUrl(format: 'json' | 'csv'): string {
   return `${API_BASE}/events/export/${format}`
 }
@@ -160,4 +201,3 @@ export function getExportUrl(format: 'json' | 'csv'): string {
 export function getVideoStreamUrl(videoName: string): string {
   return `${API_BASE}/videos/${encodeURIComponent(videoName)}/stream`
 }
-

@@ -26,8 +26,16 @@ def get_status(task_id: str, svc: PipelineService = Depends(get_pipeline_service
     return status
 
 
+@router.post("/cancel/{task_id}", response_model=PipelineStatusResponse)
+def cancel_pipeline(task_id: str, svc: PipelineService = Depends(get_pipeline_service)):
+    """Cancel an active video analysis job."""
+    status = svc.cancel_job(task_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+    return status
+
+
 @router.get("/telemetry", response_model=TelemetryHUD)
 def get_telemetry(svc: PipelineService = Depends(get_pipeline_service)):
     """Live telemetry HUD pills for the top dashboard bar."""
     return svc.get_live_telemetry()
-

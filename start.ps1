@@ -56,3 +56,4 @@ try {
     if ($frontendProc -and -not $frontendProc.HasExited) { Stop-Process -Id $frontendProc.Id -Force -ErrorAction SilentlyContinue }
     Write-Host "Servers stopped." -ForegroundColor Gray
 }
+

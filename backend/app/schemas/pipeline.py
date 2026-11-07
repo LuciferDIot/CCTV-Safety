@@ -10,17 +10,22 @@ class PipelineRunRequest(BaseModel):
     device: Optional[str] = None  # cpu or cuda
     imgsz: int = Field(default=960, ge=320, le=1920)
     save_annotated_video: bool = True
+    max_frames: Optional[int] = None
+    stride: int = Field(default=1, ge=1, le=10)
 
 
 class PipelineStatusResponse(BaseModel):
     """Current execution status of an active analysis job."""
     task_id: str
-    status: str  # idle, running, completed, failed
+    status: str  # idle, running, completed, failed, cancelled
     progress_pct: float = 0.0
     current_frame: int = 0
     total_frames: int = 0
+    fps: float = 0.0
     elapsed_seconds: float = 0.0
+    eta_seconds: Optional[float] = None
     events_detected: int = 0
+    output_video: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -31,4 +36,3 @@ class TelemetryHUD(BaseModel):
     stitched_ids: int = 2
     latency_ms: float = 31.0
     active_model: str = "YOLO11m + ByteTrack + Temporal FSM"
-

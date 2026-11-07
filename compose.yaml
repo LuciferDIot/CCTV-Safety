@@ -42,3 +42,4 @@ services:
     environment:
       - BACKEND_URL=http://backend:8000
       - PORT=3000
+
