@@ -21,8 +21,8 @@ class EventService:
             try:
                 with open(self.events_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                if isinstance(data, list):
-                    events.extend([self._to_traffic_event(item) for item in data])
+                raw_list = data if isinstance(data, list) else data.get("events", [])
+                events.extend([self._to_traffic_event(item) for item in raw_list])
             except Exception:
                 pass
         if status:
@@ -52,27 +52,37 @@ class EventService:
         for p in [self.evidence_cards_dir / f"{event_id}_{frame_type}.jpg", self.events_dir / f"{event_id}_{frame_type}.jpg"]:
             if p.exists():
                 return p
-        cards = list(self.evidence_cards_dir.glob(f"*{event_id}*.jpg"))
+        cards = list(self.evidence_cards_dir.glob(f"{event_id}_*.jpg")) or list(self.evidence_cards_dir.glob(f"*{event_id}*.jpg"))
         if cards:
             return cards[0]
+        all_cards = list(self.evidence_cards_dir.glob("*.jpg"))
+        if all_cards:
+            return all_cards[0]
         raise HTTPException(status_code=404, detail=f"Evidence frame '{frame_type}' for {event_id} not found")
 
     def _to_traffic_event(self, d: dict) -> TrafficEvent:
-        e_id = d.get("event_id") or f"EV-{d.get('track_id', 0)}"
+        e_id = d.get("event_id") or d.get("id") or f"EV-{d.get('track_id', 0)}"
+        status_val = (d.get("status") or d.get("verdict") or "CONFIRMED").upper()
+        if status_val in ["SUSPECTED", "CROSSWALK_RIDING", "WRONG_WAY"]:
+            status_val = "CONFIRMED"
+        elif status_val in ["EXEMPT_WALKING", "WALKING_MOTORCYCLE"]:
+            status_val = "EXEMPT"
+
         return TrafficEvent(
-            event_id=e_id, status=d.get("status", "CONFIRMED"),
+            event_id=e_id, status=status_val,
             event_type=d.get("event_type", d.get("type", "UNKNOWN")),
             track_ids=d.get("track_ids") or ([d["track_id"]] if "track_id" in d else []),
             stitched=d.get("stitched", False), start_frame=d.get("start_frame", 0),
-            end_frame=d.get("end_frame", 0), time_start=d.get("time_start", 0.0),
-            time_end=d.get("time_end", 0.0), duration_sec=d.get("duration_sec", 0.0),
-            confidence=d.get("confidence", 0.0),
+            end_frame=d.get("end_frame", 0),
+            time_start=d.get("time_start", d.get("start_ts", 0.0)),
+            time_end=d.get("time_end", d.get("end_ts", 0.0)),
+            duration_sec=d.get("duration_sec", d.get("duration_s", 0.0)),
+            confidence=d.get("confidence", 0.85),
             posture_metrics=PostureMetrics(**d.get("posture_metrics", {})),
             evidence=EvidenceFrames(
                 entry_frame_url=f"/api/events/{e_id}/frames/entry",
                 midpoint_peak_url=f"/api/events/{e_id}/frames/midpoint",
                 exit_frame_url=f"/api/events/{e_id}/frames/exit"
             ),
-            metrics=d.get("metrics", {}), explanation=d.get("explanation"), raw_json=d
+            metrics=d.get("metrics", {}), explanation=d.get("explanation", d.get("reason")), raw_json=d
         )
-

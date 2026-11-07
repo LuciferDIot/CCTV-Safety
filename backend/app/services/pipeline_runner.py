@@ -64,7 +64,8 @@ def run_pipeline_inference(
             task["elapsed_seconds"] = elapsed
             task["fps"] = inst_fps
             task["eta_seconds"] = round((frames_to_run - (f_idx + 1)) / inst_fps, 1) if inst_fps > 0 else 0.0
-            task["events_detected"] = len(pipeline.event_verifier.confirmed_events)
+            total_evs = len(pipeline.event_verifier.active_events) + len(pipeline.event_verifier.completed_events)
+            task["events_detected"] = total_evs
 
         if not cancel_event.is_set():
             pipeline.finalize()

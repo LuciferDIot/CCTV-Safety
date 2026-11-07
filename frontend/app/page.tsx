@@ -18,7 +18,6 @@ import {
   X,
   Copy,
   Info,
-  Layers,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -48,10 +47,11 @@ import {
 } from '@/lib/api'
 
 export default function DashboardPage() {
+  const [isMounted, setIsMounted] = useState<boolean>(false)
   const [videos, setVideos] = useState<VideoMetadata[]>([])
   const [selectedVideo, setSelectedVideo] = useState<string>('intersection_01.mp4')
   const [events, setEvents] = useState<TrafficEvent[]>([])
-  const [selectedEventId, setSelectedEventId] = useState<string>('EV-101')
+  const [selectedEventId, setSelectedEventId] = useState<string>('EV-01')
   const [filter, setFilter] = useState<string>('All events')
   const [zones, setZones] = useState<IntersectionZonesConfig | null>(null)
   const [lastCrosswalk, setLastCrosswalk] = useState<ZonePolygon | null>(null)
@@ -75,6 +75,7 @@ export default function DashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState<boolean>(false)
   const [draggingVertex, setDraggingVertex] = useState<{ zone: 'crosswalk' | 'road'; index: number } | null>(null)
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -84,6 +85,11 @@ export default function DashboardPage() {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
   }
+
+  // Prevent SSR hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Determine current video stream
   const baseVideoStem = selectedVideo.replace('_annotated.mp4', '').replace('.mp4', '')
@@ -319,8 +325,8 @@ export default function DashboardPage() {
     const rect = svg.getBoundingClientRect()
     const x = Math.round(((e.clientX - rect.left) / rect.width) * 3840)
     const y = Math.round(((e.clientY - rect.top) / rect.height) * 2160)
-    const clampedX = Math.max(0, Math.min(3840, x))
-    const clampedY = Math.max(0, Math.min(2160, y))
+    const clampedX = Math.max(0, Math.min(4200, x))
+    const clampedY = Math.max(0, Math.min(2200, y))
 
     if (draggingVertex.zone === 'road' && zones.road?.polygon) {
       const updatedRoad = { ...zones.road }
@@ -356,6 +362,19 @@ export default function DashboardPage() {
     if (status === 'EXEMPT') return '#34d399'
     if (status === 'INSUFFICIENT_EVIDENCE') return '#fbbf24'
     return '#94a3b8'
+  }
+
+  if (!isMounted) {
+    return (
+      <main className="dashboard-shell" style={{ minHeight: '100vh', background: '#090c11' }}>
+        <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: '#64748b', fontSize: 13, gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ScanLine size={20} style={{ color: '#4ade80' }} />
+            <span>Initializing AURA-Traffic Intersection Safety Suite...</span>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -695,14 +714,14 @@ export default function DashboardPage() {
                       <circle
                         cx={x}
                         cy={y}
-                        r="38"
+                        r="45"
                         fill="#0b1115"
                         stroke="#38bdf8"
-                        strokeWidth="9"
+                        strokeWidth="10"
                         style={{ cursor: 'grab' }}
                         onPointerDown={() => setDraggingVertex({ zone: 'road', index: idx })}
                       />
-                      <text x={x + 48} y={y + 14} fill="#38bdf8" fontSize="40" fontFamily="monospace" fontWeight="bold">
+                      <text x={x + 52} y={y + 16} fill="#38bdf8" fontSize="48" fontFamily="monospace" fontWeight="bold">
                         R{idx + 1}
                       </text>
                     </g>
@@ -715,14 +734,14 @@ export default function DashboardPage() {
                       <circle
                         cx={x}
                         cy={y}
-                        r="38"
+                        r="45"
                         fill="#0b1115"
                         stroke="#fbbf24"
-                        strokeWidth="9"
+                        strokeWidth="10"
                         style={{ cursor: 'grab' }}
                         onPointerDown={() => setDraggingVertex({ zone: 'crosswalk', index: idx })}
                       />
-                      <text x={x + 48} y={y + 14} fill="#fbbf24" fontSize="40" fontFamily="monospace" fontWeight="bold">
+                      <text x={x + 52} y={y + 16} fill="#fbbf24" fontSize="48" fontFamily="monospace" fontWeight="bold">
                         P{idx + 1}
                       </text>
                     </g>
@@ -764,38 +783,46 @@ export default function DashboardPage() {
                   </g>
                 )}
               </svg>
-
-              {/* VIDEO SCRUBBER BAR */}
-              <div className="video-scrubber-bar">
-                <button
-                  onClick={togglePlay}
-                  className="icon-button"
-                  style={{ color: '#4ade80', background: 'rgba(16,37,26,0.85)', padding: 7, borderRadius: '50%' }}
-                  aria-label={isPlaying ? 'Pause' : 'Play'}
-                >
-                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                </button>
-
-                <div className="time-display">
-                  <span>{formatSecs(currentTime)}</span> / <span>{formatSecs(duration)}</span>
-                </div>
-
-                <input
-                  type="range"
-                  min="0"
-                  max={duration || 100}
-                  step="0.05"
-                  value={currentTime}
-                  onChange={handleSeek}
-                  className="scrubber-slider"
-                  aria-label="Video scrubber"
-                />
-
-                <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6ee7b7' }}>
-                  {videoViewMode === 'analyzed' ? 'AI ANNOTATED STREAM' : 'RAW CCTV STREAM'}
-                </span>
-              </div>
             </div>
+
+            {/* VIDEO SCRUBBER BAR - PLACED OUTSIDE VIEWPORT TO AVOID CLIPPING BOTTOM VERTICES */}
+            <div className="video-scrubber-bar">
+              <button
+                onClick={togglePlay}
+                className="icon-button"
+                style={{ color: '#4ade80', background: 'rgba(16,37,26,0.85)', padding: 7, borderRadius: '50%' }}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              </button>
+
+              <div className="time-display">
+                <span>{formatSecs(currentTime)}</span> / <span>{formatSecs(duration)}</span>
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                step="0.05"
+                value={currentTime}
+                onChange={handleSeek}
+                className="scrubber-slider"
+                aria-label="Video scrubber"
+              />
+
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6ee7b7' }}>
+                {videoViewMode === 'analyzed' ? 'AI ANNOTATED STREAM' : 'RAW CCTV STREAM'}
+              </span>
+            </div>
+
+            {/* EDIT HINT BAR (Visible when in Edit Mode) */}
+            {mode === 'edit' && (
+              <div className="edit-hint-bar">
+                <span>EDIT MODE ACTIVE · Drag circular handles R1-R4 (Road) or P1-P4 (Crosswalk) to reshape zones</span>
+                <span style={{ color: '#38bdf8' }}>Click &quot;Save Config&quot; to apply</span>
+              </div>
+            )}
 
             {/* CANVAS FOOTER / LEGEND */}
             <div className="canvas-footer">
@@ -853,11 +880,12 @@ export default function DashboardPage() {
               {/* 3-FRAME TEMPORAL STRIP */}
               <div className="evidence-grid">
                 <div className="evidence-frame">
-                  {selectedEvent?.evidence.entry_frame_url ? (
+                  {selectedEvent?.evidence.entry_frame_url && !imgErrors[`${selectedEvent.event_id}-entry`] ? (
                     <img
                       src={selectedEvent.evidence.entry_frame_url}
                       alt="Entry Frame"
                       className="evidence-img"
+                      onError={() => setImgErrors((prev) => ({ ...prev, [`${selectedEvent.event_id}-entry`]: true }))}
                     />
                   ) : (
                     <div className="mini-scene">
@@ -875,11 +903,12 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="evidence-frame">
-                  {selectedEvent?.evidence.midpoint_peak_url ? (
+                  {selectedEvent?.evidence.midpoint_peak_url && !imgErrors[`${selectedEvent.event_id}-midpoint`] ? (
                     <img
                       src={selectedEvent.evidence.midpoint_peak_url}
                       alt="Peak Evidence"
                       className="evidence-img"
+                      onError={() => setImgErrors((prev) => ({ ...prev, [`${selectedEvent.event_id}-midpoint`]: true }))}
                     />
                   ) : (
                     <div className="mini-scene">
@@ -897,11 +926,12 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="evidence-frame">
-                  {selectedEvent?.evidence.exit_frame_url ? (
+                  {selectedEvent?.evidence.exit_frame_url && !imgErrors[`${selectedEvent.event_id}-exit`] ? (
                     <img
                       src={selectedEvent.evidence.exit_frame_url}
                       alt="Exit Frame"
                       className="evidence-img"
+                      onError={() => setImgErrors((prev) => ({ ...prev, [`${selectedEvent.event_id}-exit`]: true }))}
                     />
                   ) : (
                     <div className="mini-scene">
