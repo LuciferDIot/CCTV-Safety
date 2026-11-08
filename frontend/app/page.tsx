@@ -161,6 +161,48 @@ export default function DashboardPage() {
     }
   }
 
+  const handleSelectVideo = async (videoName: string) => {
+    setIsPlaying(false)
+    setSelectedVideo(videoName)
+    setVideoViewMode('raw')
+    setMode('view')
+
+    if (videoName.includes('intersection_01')) {
+      try {
+        const defaultZones = await resetZones()
+        setZones(defaultZones)
+        if (defaultZones.crosswalks && defaultZones.crosswalks.length > 0) {
+          setLastCrosswalk(defaultZones.crosswalks[0])
+        }
+      } catch {
+        // fallback
+      }
+    } else {
+      // For any new or other video (e.g. intersection_02, intersection_03, or uploaded videos):
+      // Road boundary covers general scene; crosswalk is disabled by default (crosswalks: [])
+      // so no phantom crosswalk is displayed where none exists in the scene.
+      setZones({
+        camera_id: `cam_${videoName.replace(/\.[^/.]+$/, '')}`,
+        video_file: videoName,
+        fps: 30.0,
+        perspective_scale_by_y: { y_top: 0.1, y_bottom: 1.0, weight_top: 0.35, weight_bottom: 1.0 },
+        road: {
+          id: 'road',
+          polygon: [
+            [500, 200],
+            [3340, 200],
+            [3840, 2160],
+            [0, 2160],
+          ],
+          warmup_frames: 40,
+        },
+        crosswalks: [],
+        lanes: [],
+      })
+    }
+    showToast(`Loaded ${videoName}. Ready for safety analysis.`)
+  }
+
   const processUploadedFile = async (file: File) => {
     setIsUploading(true)
     setIsPlaying(false)
@@ -169,9 +211,7 @@ export default function DashboardPage() {
       showToast(`Uploaded ${res.filename} successfully`)
       const updated = await fetchVideos()
       setVideos(updated)
-      setSelectedVideo(res.filename)
-      setVideoViewMode('raw')
-      setMode('edit')
+      await handleSelectVideo(res.filename)
     } catch (err: any) {
       showToast(`Upload failed: ${err.message}`)
     } finally {
@@ -186,24 +226,29 @@ export default function DashboardPage() {
   }
 
   const handleLoadSample = () => {
-    setIsPlaying(false)
-    setSelectedVideo('intersection_01.mp4')
-    setVideoViewMode('raw')
-    setMode('edit')
-    showToast('Loaded sample intersection_01.mp4. Ready to adjust zones.')
+    handleSelectVideo('intersection_01.mp4')
   }
 
   const handleToggleCrosswalk = (enabled: boolean) => {
     if (!zones) return
     if (enabled) {
-      const restored = lastCrosswalk || {
-        id: 'crosswalk_top',
-        polygon: [
-          [3022, 351],
-          [1292, 351],
-          [1088, 675],
-          [3304, 672],
-        ],
+      const isSample1 = selectedVideo.includes('intersection_01')
+      const defaultPolygon: [number, number][] = isSample1
+        ? [
+            [3022, 351],
+            [1292, 351],
+            [1088, 675],
+            [3304, 672],
+          ]
+        : [
+            [1000, 500],
+            [2800, 500],
+            [2800, 850],
+            [1000, 850],
+          ]
+      const restored = lastCrosswalk && isSample1 ? lastCrosswalk : {
+        id: 'crosswalk_zone',
+        polygon: defaultPolygon,
       }
       setZones({ ...zones, crosswalks: [restored] })
       showToast('Crosswalk monitoring enabled')
@@ -218,10 +263,32 @@ export default function DashboardPage() {
 
   const handleResetZones = async () => {
     try {
-      const res = await resetZones()
-      setZones(res)
-      if (res.crosswalks && res.crosswalks.length > 0) setLastCrosswalk(res.crosswalks[0])
-      showToast('Zones restored to default coordinates.')
+      if (selectedVideo.includes('intersection_01')) {
+        const res = await resetZones()
+        setZones(res)
+        if (res.crosswalks && res.crosswalks.length > 0) setLastCrosswalk(res.crosswalks[0])
+        showToast('Zones restored to default coordinates.')
+      } else {
+        setZones({
+          camera_id: `cam_${selectedVideo.replace(/\.[^/.]+$/, '')}`,
+          video_file: selectedVideo,
+          fps: 30.0,
+          perspective_scale_by_y: { y_top: 0.1, y_bottom: 1.0, weight_top: 0.35, weight_bottom: 1.0 },
+          road: {
+            id: 'road',
+            polygon: [
+              [500, 200],
+              [3340, 200],
+              [3840, 2160],
+              [0, 2160],
+            ],
+            warmup_frames: 40,
+          },
+          crosswalks: [],
+          lanes: [],
+        })
+        showToast('Zones reset to clean corridor layout.')
+      }
     } catch (err: any) {
       showToast(`Reset failed: ${err.message}`)
     }
@@ -417,6 +484,8 @@ export default function DashboardPage() {
               await processUploadedFile(e.dataTransfer.files[0])
             }
           }}
+          availableVideos={videos}
+          onSelectVideo={handleSelectVideo}
           onUploadClick={() => fileInputRef.current?.click()}
           onLoadSample={handleLoadSample}
         />
