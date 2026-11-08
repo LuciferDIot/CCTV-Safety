@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { VideoScrubber } from '@/components/molecules'
 import { Button } from '@/components/atoms'
-import { getVideoStreamUrl, type IntersectionZonesConfig } from '@/lib/api'
+import { getVideoStreamUrl, type IntersectionZonesConfig, type VideoMetadata } from '@/lib/api'
 
 interface VideoPlayerCanvasProps {
   selectedVideo: string
@@ -31,6 +31,8 @@ interface VideoPlayerCanvasProps {
   currentTime: number
   duration: number
   videoRef: React.RefObject<HTMLVideoElement | null>
+  availableVideos?: VideoMetadata[]
+  onSelectVideo?: (name: string) => void
   onSetVideoViewMode: (vm: 'raw' | 'analyzed') => void
   onSetActiveZoneTab: (zt: 'road' | 'crosswalk') => void
   onToggleCrosswalk: (enabled: boolean) => void
@@ -66,6 +68,8 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
   currentTime,
   duration,
   videoRef,
+  availableVideos = [],
+  onSelectVideo,
   onSetVideoViewMode,
   onSetActiveZoneTab,
   onToggleCrosswalk,
@@ -203,10 +207,40 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
               </Button>
               <Button variant="secondary" onClick={onLoadSample}>
                 <Video size={14} style={{ color: '#38bdf8' }} />
-                Load Default Sample (intersection_01.mp4)
+                Load Sample (intersection_01.mp4)
               </Button>
             </div>
-            <span style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
+            {availableVideos && availableVideos.filter(v => !v.name.includes('_annotated') && !v.name.startsWith('annotated_')).length > 1 && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>Or choose another video on the system:</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {availableVideos
+                    .filter((v) => !v.name.includes('_annotated') && !v.name.startsWith('annotated_'))
+                    .map((v) => (
+                      <button
+                        key={v.name}
+                        onClick={() => (onSelectVideo ? onSelectVideo(v.name) : onLoadSample())}
+                        style={{
+                          background: '#131b26',
+                          border: '1px solid #26303c',
+                          color: '#e2e8f0',
+                          padding: '5px 10px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Video size={12} style={{ color: '#38bdf8' }} />
+                        {v.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            <span style={{ fontSize: 10, color: '#475569', marginTop: 8 }}>
               Supports MP4, AVI, MOV up to 1GB · Zero predictions until you click &quot;Render Video&quot;
             </span>
           </div>
@@ -234,22 +268,22 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
               onPointerUp={onSvgPointerUp}
               onPointerCancel={onSvgPointerUp}
             >
-              {(mode === 'edit' || videoViewMode === 'raw' || !annotatedVideoExists) && zones?.road?.polygon && (
+              {mode === 'edit' && zones?.road?.polygon && (
                 <polygon
                   points={zones.road.polygon.map((p) => p.join(',')).join(' ')}
-                  fill={mode === 'edit' && activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
+                  fill={activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
                   stroke="#38bdf8"
-                  strokeWidth={mode === 'edit' && activeZoneTab === 'road' ? '8' : '4'}
+                  strokeWidth={activeZoneTab === 'road' ? '8' : '4'}
                   strokeDasharray="16 8"
                 />
               )}
 
-              {(mode === 'edit' || videoViewMode === 'raw' || !annotatedVideoExists) && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
+              {mode === 'edit' && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
                 <polygon
                   points={zones.crosswalks[0].polygon.map((p) => p.join(',')).join(' ')}
-                  fill={mode === 'edit' && activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
+                  fill={activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
                   stroke="#fbbf24"
-                  strokeWidth={mode === 'edit' && activeZoneTab === 'crosswalk' ? '10' : '6'}
+                  strokeWidth={activeZoneTab === 'crosswalk' ? '10' : '6'}
                 />
               )}
 

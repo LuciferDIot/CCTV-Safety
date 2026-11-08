@@ -12,8 +12,7 @@ class PipelineService:
     """Coordinates asynchronous video processing jobs and real-time execution telemetry."""
 
     def __init__(self, settings: Settings):
-        self.settings = settings
-        self.tasks: Dict[str, Dict[str, Any]] = {}
+        self.settings, self.tasks = settings, {}
         self.cancel_events: Dict[str, threading.Event] = {}
         self.telemetry = TelemetryHUD(active_model=settings.model_name)
 
@@ -21,19 +20,16 @@ class PipelineService:
         try:
             p = self.settings.resolve(self.settings.output_dir) / "tasks"
             p.mkdir(parents=True, exist_ok=True)
-            with open(p / f"{t['task_id']}.json", "w", encoding="utf-8") as f:
-                json.dump({k: v for k, v in t.items() if k != "cancel_evt"}, f)
+            (p / f"{t['task_id']}.json").write_text(json.dumps({k: v for k, v in t.items() if k != "cancel_evt"}), encoding="utf-8")
         except Exception: pass
 
     def start_job(self, req: PipelineRunRequest) -> str:
-        """Launches video analysis in a daemon background thread and returns task ID."""
         task_id, cancel_evt = str(uuid.uuid4())[:8], threading.Event()
         self.cancel_events[task_id] = cancel_evt
         t: Dict[str, Any] = {
-            "task_id": task_id, "status": "running", "progress_pct": 0.0,
-            "current_frame": 0, "total_frames": req.max_frames or 300,
-            "start_time": time.time(), "elapsed_seconds": 0.0, "fps": 0.0,
-            "eta_seconds": None, "events_detected": 0, "output_video": None, "error": None
+            "task_id": task_id, "status": "running", "progress_pct": 0.0, "current_frame": 0,
+            "total_frames": req.max_frames or 300, "start_time": time.time(), "elapsed_seconds": 0.0,
+            "fps": 0.0, "eta_seconds": None, "events_detected": 0, "output_video": None, "error": None
         }
         self.tasks[task_id] = t
         self._save_task(t)
@@ -67,28 +63,23 @@ class PipelineService:
         return self.telemetry
 
     def _run_job(self, task: Dict[str, Any], cancel_evt: threading.Event, req: PipelineRunRequest) -> None:
-        """Executes frame-by-frame analysis pipeline with periodic telemetry updates."""
         try:
             v_dir, out_dir = self.settings.resolve(self.settings.videos_dir), self.settings.resolve(self.settings.output_dir)
             safe_name = Path(req.video_name).name
             video_path = v_dir / safe_name if (v_dir / safe_name).exists() else out_dir / safe_name
             if not video_path.exists(): raise FileNotFoundError(f"Video not found: {req.video_name}")
-
             cap = cv2.VideoCapture(str(video_path))
             frames_to_run = min(int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 300), req.max_frames or 300)
             task["total_frames"], out_vid = frames_to_run, f"annotated_{safe_name}"
             w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 1920), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 1080)
-            fps = float(cap.get(cv2.CAP_PROP_FPS) or 30.0)
-            writer = cv2.VideoWriter(str(out_dir / out_vid), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
-
+            writer = cv2.VideoWriter(str(out_dir / out_vid), cv2.VideoWriter_fourcc(*"mp4v"), float(cap.get(cv2.CAP_PROP_FPS) or 30.0), (w, h))
             pipeline = IntersectionSafetyPipeline(
                 config_path=self.settings.resolve(self.settings.config_file),
                 model_path=self.settings.resolve(self.settings.model_weights),
                 output_dir=out_dir, device=req.device, imgsz=req.imgsz, override_zones=req.zones
             )
             for f_idx in range(frames_to_run):
-                if cancel_evt.is_set():
-                    task["status"] = "cancelled"; break
+                if cancel_evt.is_set(): task["status"] = "cancelled"; break
                 ret, frame = cap.read()
                 if not ret: break
                 annotated = pipeline.process_frame(frame, f_idx, frames_to_run)
