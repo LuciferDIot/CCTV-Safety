@@ -43,8 +43,7 @@ pnpm-debug.log*
 *.swp
 *.swo
 
-# Large Video Files (>100MB)
-*.mp4
+# Large Video Files (Raw videos in data/videos/ tracked via Git LFS)
 *.avi
 *.mov
 *.mkv
