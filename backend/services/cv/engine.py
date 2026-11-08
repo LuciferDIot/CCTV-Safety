@@ -50,7 +50,7 @@ class IntersectionSafetyPipeline:
         res = []
         for box in veh_dets.xyxy:
             ax, ay = (float(box[0]) + float(box[2])) / 2.0, float(box[3])
-            m = next((l for l in active if cv2.pointPolygonTest(np.array(l.polygon, dtype=np.int32), (ax, ay), False) >= 0), None)
+            m = next((l for l in active if cv2.pointPolygonTest(np.array(l.polygon, dtype=np.int32), (ax, ay), False) >= 0), None) or (min(active, key=lambda l: abs(cv2.pointPolygonTest(np.array(l.polygon, dtype=np.int32), (ax, ay), True))) if active else None)
             v = getattr(m, "permitted_direction_vector", None) or getattr(m, "permitted_unit_vector", None) if m else None
             res.append(tuple(v) if v else self.lane_vectors[0])
         return res
@@ -58,8 +58,7 @@ class IntersectionSafetyPipeline:
     def _record(self, tid: int, etype: str, frame_idx: int, conf: float, detail: str, zone: str) -> None:
         key, ts = (tid, etype), round(frame_idx / self.fps, 2)
         if key not in self.active_events:
-            self.active_events[key] = EventRecord(f"EV-{self.event_counter:02d}", etype, frame_idx, ts, tid, conf, detail, zone)
-            self.event_counter += 1
+            self.active_events[key] = EventRecord(f"EV-{self.event_counter:02d}", etype, frame_idx, ts, tid, conf, detail, zone); self.event_counter += 1
         else: self.active_events[key].update(frame_idx, ts)
 
     def process_frame(self, frame: np.ndarray, frame_idx: int, total_frames: int = 0) -> np.ndarray:
@@ -73,8 +72,11 @@ class IntersectionSafetyPipeline:
             if len(trk.history) >= 4:
                 p_c, p_p = trk.history[-1], trk.history[-4]
                 self.lane_detector.observe(p_c[1], p_c[2], (p_c[1] - p_p[1]) / max(1, p_c[0] - p_p[0]), (p_c[2] - p_p[2]) / max(1, p_c[0] - p_p[0]))
-        if not self.config.lanes and not self.detected_lanes and len(self.lane_detector._obs) >= 8:
-            self.detected_lanes = self.lane_detector.detect_lanes() or []
+        if not self.config.lanes and len(self.lane_detector._obs) >= 15:
+            if not self.detected_lanes or len(self.detected_lanes) < 2 or (frame_idx % 20 == 0):
+                new_l = self.lane_detector.detect_lanes()
+                if new_l and (len(new_l) >= len(self.detected_lanes) or not self.detected_lanes):
+                    self.detected_lanes = new_l
         dets = resolve_riders_and_pedestrians(dets, self.lane_zones, self.cw_zones, raw_hist)
         annotated = frame.copy()
         for za in self.ann.zone_annotators: annotated = za.annotate(scene=annotated)
@@ -94,6 +96,5 @@ class IntersectionSafetyPipeline:
         return draw_render_progress_bar(annotated, frame_idx + 1, total_frames) if total_frames > 0 else annotated
 
     def finalize(self) -> Tuple[List[Any], Dict[str, Any]]:
-        self.completed_events += [e for e in self.active_events.values() if e not in self.completed_events]
-        self.active_events.clear()
+        self.completed_events += [e for e in self.active_events.values() if e not in self.completed_events]; self.active_events.clear()
         return (self.completed_events, {"total_events": len(self.completed_events)})

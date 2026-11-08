@@ -22,9 +22,14 @@ def create_synthetic_test_video(path: Path, width: int = 640, height: int = 480,
 
 def test_no_sample_videos_exposed():
     """Verify that sample videos from data/videos folder are not exposed in GET /api/videos or default zones."""
-    res = client.get("/api/videos")
-    assert res.status_code == 200
-    assert "intersection_03.mp4" not in [v["name"] for v in res.json()]
+    test_sample = Path("data/videos/strictly_sample_test.mp4")
+    try:
+        test_sample.touch()
+        res = client.get("/api/videos")
+        assert res.status_code == 200
+        assert "strictly_sample_test.mp4" not in [v["name"] for v in res.json()]
+    finally:
+        if test_sample.exists(): test_sample.unlink()
 
     z_res = client.get("/api/config/zones")
     assert z_res.status_code == 200
