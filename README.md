@@ -238,7 +238,7 @@ Once built and running:
 - **FastAPI API**: `http://localhost:8000`
 - **Swagger Documentation**: `http://localhost:8000/docs`
 
-> **GPU Acceleration**: To enable NVIDIA GPU acceleration inside the Docker container, ensure the NVIDIA Container Toolkit is installed and uncomment the `deploy.resources.reservations.devices` block in [`compose.yaml`](file:///f:/Projects/CCTV-Safety/compose.yaml).
+> **GPU Acceleration**: To enable NVIDIA GPU acceleration inside the Docker container, ensure the NVIDIA Container Toolkit is installed and uncomment the `deploy.resources.reservations.devices` block in [`compose.yaml`](compose.yaml).
 
 ---
 

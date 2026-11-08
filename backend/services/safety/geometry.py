@@ -1,4 +1,11 @@
-"""Geometric and perspective calculations on CCTV 2D/3D ground plane."""
+"""Geometric and perspective calculations on CCTV 2D/3D ground plane.
+
+Real-world intuition:
+- Ground Anchor: Tires or feet touch the pavement at the bounding box bottom-center.
+- Perspective Foreshortening: Distant objects (top of frame) traverse fewer pixels
+  per meter than foreground objects (bottom of frame).
+- Segment Distance: Vector projection identifies closest point on finite roadway boundaries.
+"""
 import math
 from typing import Tuple, Optional, Any
 import cv2
@@ -6,22 +13,26 @@ import numpy as np
 
 
 def get_box_geometry(bbox: np.ndarray) -> Tuple[float, float, float, float]:
-    """Extract width, height, area, and aspect ratio (H/W) from bbox."""
-    w = max(1.0, float(bbox[2] - bbox[0]))
-    h = max(1.0, float(bbox[3] - bbox[1]))
-    return (w, h, w * h, h / w)
+    """Extract width, height, area, and aspect ratio (H/W) from bounding box."""
+    box_width = max(1.0, float(bbox[2] - bbox[0]))
+    box_height = max(1.0, float(bbox[3] - bbox[1]))
+    box_area = box_width * box_height
+    aspect_ratio = box_height / box_width
+    return (box_width, box_height, box_area, aspect_ratio)
 
 
 def get_ground_anchor(bbox: np.ndarray) -> Tuple[float, float]:
-    """Calculate bottom-center ground contact point on road plane."""
-    return ((float(bbox[0]) + float(bbox[2])) / 2.0, float(bbox[3]))
+    """Calculate bottom-center ground contact point ((x1+x2)/2, y2) on road plane."""
+    center_x = (float(bbox[0]) + float(bbox[2])) / 2.0
+    ground_y = float(bbox[3])  # Pavement contact level
+    return (center_x, ground_y)
 
 
 def compute_perspective_scale(
     y_or_point: Any, frame_height: float,
     perspective_cfg: Optional[Any] = None, frame_width: Optional[float] = None
 ) -> float:
-    """Calculate scaling weight to compensate for perspective foreshortening."""
+    """Calculate scaling weight w(y) to compensate for perspective foreshortening."""
     if perspective_cfg is None or frame_height <= 0:
         return 1.0
 
@@ -57,18 +68,24 @@ def compute_perspective_scale(
 
 
 def point_to_polygon_dist(point: Tuple[float, float], polygon: np.ndarray) -> float:
-    """Calculate signed distance from a point to a polygon in pixels."""
+    """Calculate signed distance from a point to a polygon boundary in pixels."""
     poly_pts = np.array(polygon, dtype=np.int32).reshape((-1, 1, 2))
     return float(cv2.pointPolygonTest(poly_pts, (float(point[0]), float(point[1])), measureDist=True))
 
 
-def point_to_segment_dist(p: Tuple[float, float], a: Tuple[float, float], b: Tuple[float, float]) -> float:
-    """Calculate Euclidean distance from point p to line segment ab."""
-    px, py, ax, ay, bx, by = p[0], p[1], a[0], a[1], b[0], b[1]
-    abx, aby = bx - ax, by - ay
-    seg_len_sq = abx * abx + aby * aby
+def point_to_segment_dist(
+    query_point: Tuple[float, float], seg_start: Tuple[float, float], seg_end: Tuple[float, float]
+) -> float:
+    """Calculate Euclidean distance from query_point to finite line segment (seg_start -> seg_end)."""
+    px, py = query_point[0], query_point[1]
+    ax, ay = seg_start[0], seg_start[1]
+    bx, by = seg_end[0], seg_end[1]
+    seg_dx, seg_dy = bx - ax, by - ay
+    seg_len_sq = seg_dx * seg_dx + seg_dy * seg_dy
     if seg_len_sq == 0:
         return math.hypot(px - ax, py - ay)
-    t = max(0.0, min(1.0, ((px - ax) * abx + (py - ay) * aby) / seg_len_sq))
-    return math.hypot(px - (ax + t * abx), py - (ay + t * aby))
-
+    # Project vector (seg_start -> query_point) onto segment vector, clamped to [0, 1]
+    projection_t = max(0.0, min(1.0, ((px - ax) * seg_dx + (py - ay) * seg_dy) / seg_len_sq))
+    closest_x = ax + projection_t * seg_dx
+    closest_y = ay + projection_t * seg_dy
+    return math.hypot(px - closest_x, py - closest_y)

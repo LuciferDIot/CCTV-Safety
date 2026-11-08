@@ -1,66 +1,90 @@
-"""Safety rules for rider-to-motorcycle spatial fusion and walking ped disambiguation."""
+"""Safety rules for rider-to-motorcycle spatial fusion and walking ped disambiguation.
+
+Real-world intuition:
+- Multimodal Rider-Bike Vertical Fusion: Object detectors (YOLO) often detect a mounted
+  motorcyclist twice: once as a "person" (torso/helmet) and once as a "motorcycle" (chassis/wheels).
+  We match horizontal center alignment and vertical stacking (rider above chassis) to merge
+  them into a single motorcycle detection, suppressing ghost pedestrian tracks.
+- Aspect Ratio Reclassification: In active traffic lanes, squat boxes (aspect ratio < 1.80)
+  moving faster than walking speed are reclassified from pedestrians to motorcycles.
+"""
 from typing import Optional, Any
 import numpy as np
 from services.safety.geometry import point_to_polygon_dist
 
 
-def _match_rider_to_bike(pb: np.ndarray, b_indices: np.ndarray, detections: Any) -> bool:
+def _match_rider_to_bike(person_box: np.ndarray, bike_indices: np.ndarray, detections: Any) -> bool:
     """Fuse vertically stacked person onto detected motorcycle chassis."""
-    pcx, pw = (pb[0] + pb[2]) / 2.0, pb[2] - pb[0]
-    for b_idx in b_indices:
-        bb = detections.xyxy[b_idx]
-        bcx, bw = (bb[0] + bb[2]) / 2.0, bb[2] - bb[0]
-        dx = abs(pcx - bcx)
-        y_overlap = (pb[3] >= bb[1] - 50.0 and pb[1] <= bb[3])
-        if dx <= max(75.0, 0.75 * max(pw, bw)) and y_overlap:
-            detections.xyxy[b_idx][0] = min(detections.xyxy[b_idx][0], pb[0])
-            detections.xyxy[b_idx][1] = min(detections.xyxy[b_idx][1], pb[1])
-            detections.xyxy[b_idx][2] = max(detections.xyxy[b_idx][2], pb[2])
-            detections.xyxy[b_idx][3] = max(detections.xyxy[b_idx][3], pb[3])
+    person_center_x = (person_box[0] + person_box[2]) / 2.0
+    person_width = person_box[2] - person_box[0]
+
+    for bike_idx in bike_indices:
+        bike_box = detections.xyxy[bike_idx]
+        bike_center_x = (bike_box[0] + bike_box[2]) / 2.0
+        bike_width = bike_box[2] - bike_box[0]
+
+        center_offset_x = abs(person_center_x - bike_center_x)
+        # Vertical stacking: rider's lower body near bike top, torso above bike
+        vertical_overlap = (person_box[3] >= bike_box[1] - 50.0 and person_box[1] <= bike_box[3])
+        horizontal_aligned = center_offset_x <= max(75.0, 0.75 * max(person_width, bike_width))
+
+        if horizontal_aligned and vertical_overlap:
+            # Envelop rider and motorcycle chassis into a single combined bounding box
+            detections.xyxy[bike_idx][0] = min(detections.xyxy[bike_idx][0], person_box[0])
+            detections.xyxy[bike_idx][1] = min(detections.xyxy[bike_idx][1], person_box[1])
+            detections.xyxy[bike_idx][2] = max(detections.xyxy[bike_idx][2], person_box[2])
+            detections.xyxy[bike_idx][3] = max(detections.xyxy[bike_idx][3], person_box[3])
             return True
     return False
 
 
-def _is_walking_ped(tid: Optional[int], track_history: Optional[dict]) -> bool:
-    if tid is None or not track_history or tid not in track_history:
+def _is_walking_ped(tracker_id: Optional[int], track_history: Optional[dict]) -> bool:
+    """Check if track displacement indicates pedestrian walking speed (<= 4.0 px/frame)."""
+    if tracker_id is None or not track_history or tracker_id not in track_history:
         return False
-    hist = track_history[tid]
-    if len(hist) < 3:
+    history_points = track_history[tracker_id]
+    if len(history_points) < 3:
         return False
-    dx, dy = hist[-1][0] - hist[0][0], hist[-1][1] - hist[0][1]
-    return (np.hypot(dx, dy) / max(1, len(hist) - 1)) <= 4.0
+    dx = history_points[-1][0] - history_points[0][0]
+    dy = history_points[-1][1] - history_points[0][1]
+    avg_speed = np.hypot(dx, dy) / max(1, len(history_points) - 1)
+    return avg_speed <= 4.0
 
 
 def resolve_riders_and_pedestrians(
     detections: Any, lane_zones: list, crosswalk_zones: list, track_history: Optional[dict] = None
 ) -> Any:
-    """Merge mounted riders into motorcycle bounding boxes."""
+    """Merge mounted riders into motorcycle bounding boxes and filter ghost pedestrians."""
     if len(detections) == 0:
         return detections
 
-    p_indices = np.where(detections.class_id == 0)[0]
-    b_indices = np.where(np.isin(detections.class_id, [1, 3]))[0]
-    suppress = []
+    person_indices = np.where(detections.class_id == 0)[0]
+    bike_indices = np.where(np.isin(detections.class_id, [1, 3]))[0]
+    suppress_indices = []
 
-    for p_idx in p_indices:
-        pb = detections.xyxy[p_idx]
-        if _match_rider_to_bike(pb, b_indices, detections):
-            suppress.append(p_idx)
+    for person_idx in person_indices:
+        person_box = detections.xyxy[person_idx]
+        if _match_rider_to_bike(person_box, bike_indices, detections):
+            suppress_indices.append(person_idx)
             continue
 
-        pcx, pw, ph = (pb[0] + pb[2]) / 2.0, pb[2] - pb[0], pb[3] - pb[1]
-        in_cw = any(point_to_polygon_dist((pcx, pb[3]), z.polygon) >= -10 for z in crosswalk_zones)
-        if in_cw:
+        person_center_x = (person_box[0] + person_box[2]) / 2.0
+        person_width = person_box[2] - person_box[0]
+        person_height = person_box[3] - person_box[1]
+
+        # Pedestrians safely on crosswalks are not reclassified
+        in_crosswalk = any(point_to_polygon_dist((person_center_x, person_box[3]), z.polygon) >= -10 for z in crosswalk_zones)
+        if in_crosswalk:
             continue
 
-        in_lane = any(point_to_polygon_dist((pcx, pb[3]), z.polygon) >= -10 for z in lane_zones)
-        if in_lane:
-            aspect = ph / max(1.0, pw)
-            tid = detections.tracker_id[p_idx] if detections.tracker_id is not None else None
-            if aspect < 1.80 and not _is_walking_ped(tid, track_history):
-                detections.class_id[p_idx] = 3
+        # In vehicle traffic lanes, reclassify squat non-walking shapes to motorcycles (class 3)
+        in_traffic_lane = any(point_to_polygon_dist((person_center_x, person_box[3]), z.polygon) >= -10 for z in lane_zones)
+        if in_traffic_lane:
+            aspect_ratio = person_height / max(1.0, person_width)
+            tracker_id = detections.tracker_id[person_idx] if detections.tracker_id is not None else None
+            if aspect_ratio < 1.80 and not _is_walking_ped(tracker_id, track_history):
+                detections.class_id[person_idx] = 3
 
-    keep = np.ones(len(detections), dtype=bool)
-    keep[suppress] = False
-    return detections[keep]
-
+    keep_mask = np.ones(len(detections), dtype=bool)
+    keep_mask[suppress_indices] = False
+    return detections[keep_mask]

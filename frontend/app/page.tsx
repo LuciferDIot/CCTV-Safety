@@ -247,9 +247,11 @@ export default function DashboardPage() {
       showToast(`Started rendering (${renderPreset === 'preview' ? 'Fast 100 frames' : 'Full video'})`)
 
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      let consecutiveErrors = 0
       pollTimerRef.current = setInterval(async () => {
         try {
           const status = await fetchPipelineStatus(initialTask.task_id)
+          consecutiveErrors = 0
           setActiveTask(status)
           if (status.status === 'completed') {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
@@ -269,7 +271,15 @@ export default function DashboardPage() {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
             showToast(`Rendering ${status.status}: ${status.error || ''}`)
           }
-        } catch {}
+        } catch (err: any) {
+          consecutiveErrors += 1
+          const msg = String(err?.message || '')
+          if (consecutiveErrors >= 3 || msg.includes('404') || msg.includes('Not Found')) {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+            setActiveTask(null)
+            showToast('Render task interrupted or server reloaded. Please start again.')
+          }
+        }
       }, 450)
     } catch (err: any) {
       showToast(`Failed to start render: ${err.message}`)
