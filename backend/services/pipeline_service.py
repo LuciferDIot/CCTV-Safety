@@ -33,15 +33,16 @@ class PipelineService:
         return self.get_task_status(task_id)
 
     def get_task_status(self, task_id: str) -> Optional[PipelineStatusResponse]:
+        import os
         t, p = self.tasks.get(task_id), self.settings.resolve(self.settings.output_dir) / "tasks" / f"{task_id}.json"
         if not t and p.exists():
             try:
                 t = json.loads(p.read_text(encoding="utf-8"))
-                if t.get("status") == "running" and task_id not in self.cancel_events: t["status"], t["error"] = "failed", "Server process reloaded"
+                if t.get("status") == "running" and task_id not in self.cancel_events and (time.time() - os.path.getmtime(p)) > 10:
+                    t["status"], t["error"] = "failed", "Server process reloaded"
                 self.tasks[task_id] = t
             except Exception: pass
         return PipelineStatusResponse(task_id=task_id, status=t["status"], progress_pct=t["progress_pct"], current_frame=t["current_frame"], total_frames=t["total_frames"], fps=t.get("fps", 0.0), elapsed_seconds=t["elapsed_seconds"], eta_seconds=t.get("eta_seconds"), events_detected=t["events_detected"], output_video=t.get("output_video"), error=t["error"]) if t else None
-
     def get_live_telemetry(self) -> TelemetryHUD: return self.telemetry
 
     def _prepare_zones(self, req_zones: Optional[Dict[str, Any]], safe_name: str, safe_stem: str, w: int, h: int, fps: float) -> Dict[str, Any]:
@@ -78,6 +79,7 @@ class PipelineService:
                 if writer.isOpened(): writer.write(annotated)
                 elapsed = round(time.time() - task["start_time"], 1)
                 task.update({"current_frame": f_idx + 1, "progress_pct": round(((f_idx + 1) / max(1, frames_to_run)) * 100, 1), "elapsed_seconds": elapsed, "fps": round((f_idx + 1) / elapsed, 1) if elapsed > 0 else 30.0})
+                if (f_idx + 1) % 25 == 0: self._save_task(task)
             cap.release(); (writer.release() if writer else None); writer = None
             if not cancel_evt.is_set():
                 remux_h264(raw_tmp, out_dir / out_vid)

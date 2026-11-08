@@ -363,8 +363,13 @@ export default function DashboardPage() {
               }, 600)
             }
           } else if (status.status === 'failed' || status.status === 'cancelled') {
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-            showToast(`Rendering ${status.status}: ${status.error || ''}`)
+            // If the error is a server reload, the job thread may still be running —
+            // keep polling for up to 30s to catch late completion before giving up.
+            const isReloadError = (status.error || '').includes('Server process reloaded')
+            if (!isReloadError) {
+              if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+              showToast(`Rendering ${status.status}: ${status.error || ''}`)
+            }
           }
         } catch (err: any) {
           consecutiveErrors += 1
