@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Header, HTTPException
 from starlette.responses import StreamingResponse
 from controllers.deps import get_video_service
 from services.video_service import VideoService
+from services.zone_service import ZoneService
 from views.video_views import VideoMetadata, VideoUploadResponse
 
 router = APIRouter(prefix="/videos", tags=["videos"])
@@ -30,9 +31,13 @@ def upload_video(file: UploadFile = File(...), svc: VideoService = Depends(get_v
     safe_filename = Path(file.filename).name
     if not safe_filename.lower().endswith((".mp4", ".avi", ".mov")):
         raise HTTPException(status_code=400, detail="Only MP4, AVI, or MOV video files supported")
-    dest = svc.videos_dir / safe_filename
+    dest = svc.uploads_dir / safe_filename
     with open(dest, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+    # Ensure uploaded video is H.264 + faststart for guaranteed browser playback
+    from services.cv.remux import ensure_h264
+    dest = ensure_h264(dest)
+    safe_filename = dest.name
     meta = svc.probe_video(dest)
     size_mb = round(dest.stat().st_size / (1024 * 1024), 2)
     if not meta:
@@ -40,6 +45,7 @@ def upload_video(file: UploadFile = File(...), svc: VideoService = Depends(get_v
             name=safe_filename, fps=30.0, total_frames=0, duration_seconds=0.0,
             width=1920, height=1080, size_mb=size_mb, stream_url=f"/api/videos/{safe_filename}/stream"
         )
+    ZoneService._shared_override = ZoneService.create_default_zones(safe_filename, meta.width, meta.height)
     return VideoUploadResponse(message="Video uploaded successfully", filename=safe_filename, size_mb=size_mb, metadata=meta)
 
 

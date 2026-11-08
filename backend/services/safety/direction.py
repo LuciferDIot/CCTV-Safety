@@ -77,7 +77,7 @@ class DirectionChecker:
         self.first_detected_frame.setdefault(tid, frame_idx)
         return (self.wrong_way_streaks[tid] >= self.min_sustained_frames and not is_ambiguous, True)
 
-    def check_detections(self, detections: Any, permitted_vector: Tuple[float, float], track_history: dict, lane_id: str = "lane", frame_idx: int = 0, ambiguous_mask: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
+    def check_detections(self, detections: Any, permitted_vector: Any, track_history: dict, lane_id: str = "lane", frame_idx: int = 0, ambiguous_mask: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
         n = len(detections)
         if n == 0 or getattr(detections, "tracker_id", None) is None:
             return (np.zeros(n, dtype=bool), np.zeros(n, dtype=bool))
@@ -85,7 +85,8 @@ class DirectionChecker:
         for i, tid in enumerate(detections.tracker_id):
             if tid is None or tid not in track_history or len(track_history[tid]) < self.min_frames: continue
             is_ambig = bool(ambiguous_mask[i]) if ambiguous_mask is not None else False
-            c, s = self._eval_vehicle(tid, track_history[tid], permitted_vector, is_ambig, frame_idx)
+            p_vec = permitted_vector[i] if isinstance(permitted_vector, (list, np.ndarray)) and len(permitted_vector) == n else permitted_vector
+            c, s = self._eval_vehicle(tid, track_history[tid], p_vec, is_ambig, frame_idx)
             conf_m[i], susp_m[i] = c, s
 
         if len(self.last_detected_frame) > 300:

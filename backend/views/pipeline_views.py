@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class PipelineRunRequest(BaseModel):
-    video_name: str = "intersection_01.mp4"
+    video_name: str = ""
     max_frames: Optional[int] = 300
     device: Optional[str] = "cpu"
     imgsz: int = 960

@@ -9,6 +9,7 @@ import {
   Upload,
   Video,
   Loader2,
+  Edit3,
 } from 'lucide-react'
 import { VideoScrubber } from '@/components/molecules'
 import { Button } from '@/components/atoms'
@@ -32,7 +33,10 @@ interface VideoPlayerCanvasProps {
   duration: number
   videoRef: React.RefObject<HTMLVideoElement | null>
   availableVideos?: VideoMetadata[]
+  videoWidth?: number
+  videoHeight?: number
   onSelectVideo?: (name: string) => void
+  onSetMode?: (m: 'view' | 'edit') => void
   onSetVideoViewMode: (vm: 'raw' | 'analyzed') => void
   onSetActiveZoneTab: (zt: 'road' | 'crosswalk') => void
   onToggleCrosswalk: (enabled: boolean) => void
@@ -48,7 +52,6 @@ interface VideoPlayerCanvasProps {
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
   onUploadClick: () => void
-  onLoadSample: () => void
 }
 
 export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
@@ -69,7 +72,10 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
   duration,
   videoRef,
   availableVideos = [],
+  videoWidth = 1920,
+  videoHeight = 1080,
   onSelectVideo,
+  onSetMode,
   onSetVideoViewMode,
   onSetActiveZoneTab,
   onToggleCrosswalk,
@@ -85,8 +91,17 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
   onDragLeave,
   onDrop,
   onUploadClick,
-  onLoadSample,
 }) => {
+  const maxZoneX = zones?.road?.polygon ? Math.max(...zones.road.polygon.map((p) => p[0]), 0) : 0
+  const maxZoneY = zones?.road?.polygon ? Math.max(...zones.road.polygon.map((p) => p[1]), 0) : 0
+  const vw = videoWidth || (maxZoneX > 1920 ? 3840 : 1920)
+  const vh = videoHeight || (maxZoneY > 1080 ? 2160 : 1080)
+  const vertexR = Math.max(16, Math.round(vw * 0.012))
+  const strokeW = Math.max(4, Math.round(vw * 0.0025))
+  const fontSz = Math.max(16, Math.round(vw * 0.013))
+  const labelOffsetX = Math.round(vertexR * 1.15)
+  const labelOffsetY = Math.round(vertexR * 0.35)
+
   return (
     <section className="canvas-card">
       <div className="canvas-toolbar">
@@ -103,7 +118,14 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
               </Button>
               <Button
                 className={`feed-toggle-btn ${videoViewMode === 'analyzed' ? 'active' : ''}`}
-                onClick={() => onSetVideoViewMode('analyzed')}
+                onClick={() => {
+                  if (annotatedVideoExists) onSetVideoViewMode('analyzed')
+                }}
+                disabled={!annotatedVideoExists}
+                style={{
+                  opacity: annotatedVideoExists ? 1 : 0.5,
+                  cursor: annotatedVideoExists ? 'pointer' : 'not-allowed',
+                }}
                 title={annotatedVideoExists ? 'Switch to AI analyzed video' : 'Run render to generate annotated output'}
               >
                 AI ANALYZED {annotatedVideoExists ? '●' : ''}
@@ -113,61 +135,88 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
         </div>
 
         <div className="canvas-actions">
-          {selectedVideo && mode === 'edit' && (
+          {selectedVideo && (
             <>
-              <div className="layer-tabs">
+              {onSetMode && (
                 <Button
-                  className={`layer-tab-btn ${activeZoneTab === 'road' ? 'active-road' : ''}`}
-                  onClick={() => onSetActiveZoneTab('road')}
+                  className={`layer-tab-btn ${mode === 'edit' ? 'active-road' : ''}`}
+                  onClick={() => onSetMode(mode === 'edit' ? 'view' : 'edit')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    marginRight: 6,
+                    border: mode === 'edit' ? '1px solid #38bdf8' : '1px solid #334155',
+                    background: mode === 'edit' ? 'rgba(56, 189, 248, 0.2)' : '#1e293b',
+                    color: mode === 'edit' ? '#38bdf8' : '#e2e8f0',
+                  }}
+                  title={mode === 'edit' ? 'Exit editing and return to playback view' : 'Enter zone calibration mode to edit road & crosswalk'}
                 >
-                  Road Polygon
+                  <Edit3 size={12} />
+                  {mode === 'edit' ? 'Done Editing' : 'Edit Zones'}
                 </Button>
-                <Button
-                  className={`layer-tab-btn ${activeZoneTab === 'crosswalk' ? 'active-crosswalk' : ''}`}
-                  onClick={() => onSetActiveZoneTab('crosswalk')}
-                >
-                  Crosswalk
-                </Button>
-              </div>
-
-              {activeZoneTab === 'crosswalk' && (
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: '#fcd34d', cursor: 'pointer', marginLeft: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={crosswalkEnabled}
-                    onChange={(e) => onToggleCrosswalk(e.target.checked)}
-                    style={{ accentColor: '#fbbf24' }}
-                  />
-                  Enable Monitoring
-                </label>
               )}
 
-              <Button
-                variant="icon"
-                style={{
-                  border: '1px solid #0284c7',
-                  background: '#082f49',
-                  color: '#38bdf8',
-                  padding: '4px 8px',
-                  fontSize: 10,
-                  display: 'inline-flex',
-                  gap: 5,
-                  marginLeft: 6,
-                }}
-                onClick={onSaveZones}
-                title="Save modified zone layout"
-              >
-                <Save size={13} /> Save Layout
-              </Button>
+              {mode === 'edit' && (
+                <>
+                  <div className="layer-tabs">
+                    <Button
+                      className={`layer-tab-btn ${activeZoneTab === 'road' ? 'active-road' : ''}`}
+                      onClick={() => onSetActiveZoneTab('road')}
+                    >
+                      Road Polygon
+                    </Button>
+                    <Button
+                      className={`layer-tab-btn ${activeZoneTab === 'crosswalk' ? 'active-crosswalk' : ''}`}
+                      onClick={() => onSetActiveZoneTab('crosswalk')}
+                    >
+                      Crosswalk
+                    </Button>
+                  </div>
 
-              <Button
-                variant="icon"
-                style={{ border: '1px solid #26303c', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5, marginLeft: 6 }}
-                onClick={onResetZones}
-                title="Reset zones to default layout"
-              >
-                <RotateCcw size={13} /> Reset Layout
-              </Button>
+                  {activeZoneTab === 'crosswalk' && (
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: '#fcd34d', cursor: 'pointer', marginLeft: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={crosswalkEnabled}
+                        onChange={(e) => onToggleCrosswalk(e.target.checked)}
+                        style={{ accentColor: '#fbbf24' }}
+                      />
+                      Enable Monitoring
+                    </label>
+                  )}
+
+                  <Button
+                    variant="icon"
+                    style={{
+                      border: '1px solid #0284c7',
+                      background: '#082f49',
+                      color: '#38bdf8',
+                      padding: '4px 8px',
+                      fontSize: 10,
+                      display: 'inline-flex',
+                      gap: 5,
+                      marginLeft: 6,
+                    }}
+                    onClick={onSaveZones}
+                    title="Save modified zone layout"
+                  >
+                    <Save size={13} /> Save Layout
+                  </Button>
+
+                  <Button
+                    variant="icon"
+                    style={{ border: '1px solid #26303c', padding: '4px 8px', fontSize: 10, display: 'inline-flex', gap: 5, marginLeft: 6 }}
+                    onClick={onResetZones}
+                    title="Reset zones to default layout"
+                  >
+                    <RotateCcw size={13} /> Reset Layout
+                  </Button>
+                </>
+              )}
             </>
           )}
 
@@ -187,6 +236,7 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
 
       <div
         className={`feed-viewport ${!selectedVideo ? 'empty-dropzone' : ''} ${isDraggingOver ? 'drag-over' : ''}`}
+        style={selectedVideo ? { aspectRatio: `${vw} / ${vh}` } : undefined}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
@@ -198,49 +248,15 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
             </div>
             <h3>Upload CCTV Video Stream</h3>
             <p>
-              Drag &amp; drop your 4K/1080p MP4 or AVI footage here, or load the built-in intersection sample to calibrate zones and run safety checks.
+              Drag &amp; drop your CCTV footage (MP4, AVI, MOV) here to calibrate editable safety zones and analyze traffic violations.
             </p>
             <div className="empty-actions">
               <Button variant="primary" onClick={onUploadClick} disabled={isUploading}>
                 {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                 {isUploading ? 'Uploading Video...' : 'Select Video File'}
               </Button>
-              <Button variant="secondary" onClick={onLoadSample}>
-                <Video size={14} style={{ color: '#38bdf8' }} />
-                Load Sample (intersection_01.mp4)
-              </Button>
             </div>
-            {availableVideos && availableVideos.filter(v => !v.name.includes('_annotated') && !v.name.startsWith('annotated_')).length > 1 && (
-              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>Or choose another video on the system:</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                  {availableVideos
-                    .filter((v) => !v.name.includes('_annotated') && !v.name.startsWith('annotated_'))
-                    .map((v) => (
-                      <button
-                        key={v.name}
-                        onClick={() => (onSelectVideo ? onSelectVideo(v.name) : onLoadSample())}
-                        style={{
-                          background: '#131b26',
-                          border: '1px solid #26303c',
-                          color: '#e2e8f0',
-                          padding: '5px 10px',
-                          borderRadius: 6,
-                          fontSize: 11,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <Video size={12} style={{ color: '#38bdf8' }} />
-                        {v.name}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
-            <span style={{ fontSize: 10, color: '#475569', marginTop: 8 }}>
+            <span style={{ fontSize: 10, color: '#475569', marginTop: 12 }}>
               Supports MP4, AVI, MOV up to 1GB · Zero predictions until you click &quot;Render Video&quot;
             </span>
           </div>
@@ -262,28 +278,29 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
             />
 
             <svg
-              viewBox="0 0 3840 2160"
+              viewBox={`0 0 ${vw} ${vh}`}
+              preserveAspectRatio="none"
               className={`canvas-svg-overlay ${mode === 'edit' ? 'interactive' : ''}`}
               onPointerMove={onSvgPointerMove}
               onPointerUp={onSvgPointerUp}
               onPointerCancel={onSvgPointerUp}
             >
-              {mode === 'edit' && zones?.road?.polygon && (
+              {(mode === 'edit' || (mode === 'view' && videoViewMode === 'raw')) && zones?.road?.polygon && (
                 <polygon
                   points={zones.road.polygon.map((p) => p.join(',')).join(' ')}
-                  fill={activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
+                  fill={mode === 'edit' && activeZoneTab === 'road' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.05)'}
                   stroke="#38bdf8"
-                  strokeWidth={activeZoneTab === 'road' ? '8' : '4'}
+                  strokeWidth={mode === 'edit' && activeZoneTab === 'road' ? Math.max(4, Math.round(vw * 0.002)) : Math.max(2, Math.round(vw * 0.001))}
                   strokeDasharray="16 8"
                 />
               )}
 
-              {mode === 'edit' && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
+              {(mode === 'edit' || (mode === 'view' && videoViewMode === 'raw')) && crosswalkEnabled && zones?.crosswalks?.[0]?.polygon && (
                 <polygon
                   points={zones.crosswalks[0].polygon.map((p) => p.join(',')).join(' ')}
-                  fill={activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
+                  fill={mode === 'edit' && activeZoneTab === 'crosswalk' ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.12)'}
                   stroke="#fbbf24"
-                  strokeWidth={activeZoneTab === 'crosswalk' ? '10' : '6'}
+                  strokeWidth={mode === 'edit' && activeZoneTab === 'crosswalk' ? Math.max(5, Math.round(vw * 0.0025)) : Math.max(3, Math.round(vw * 0.0015))}
                 />
               )}
 
@@ -293,10 +310,10 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
                     <circle
                       cx={x}
                       cy={y}
-                      r="45"
+                      r={vertexR}
                       fill="#0b1115"
                       stroke="#38bdf8"
-                      strokeWidth="10"
+                      strokeWidth={strokeW}
                       style={{ cursor: 'grab' }}
                       onPointerDown={(e) => {
                         e.currentTarget.setPointerCapture(e.pointerId)
@@ -311,7 +328,7 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
                         onSvgPointerUp()
                       }}
                     />
-                    <text x={x + 52} y={y + 16} fill="#38bdf8" fontSize="48" fontFamily="monospace" fontWeight="bold">
+                    <text x={x + labelOffsetX} y={y + labelOffsetY} fill="#38bdf8" fontSize={fontSz} fontFamily="monospace" fontWeight="bold">
                       R{idx + 1}
                     </text>
                   </g>
@@ -323,10 +340,10 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
                     <circle
                       cx={x}
                       cy={y}
-                      r="45"
+                      r={vertexR}
                       fill="#0b1115"
                       stroke="#fbbf24"
-                      strokeWidth="10"
+                      strokeWidth={strokeW}
                       style={{ cursor: 'grab' }}
                       onPointerDown={(e) => {
                         e.currentTarget.setPointerCapture(e.pointerId)
@@ -341,7 +358,7 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
                         onSvgPointerUp()
                       }}
                     />
-                    <text x={x + 52} y={y + 16} fill="#fbbf24" fontSize="48" fontFamily="monospace" fontWeight="bold">
+                    <text x={x + labelOffsetX} y={y + labelOffsetY} fill="#fbbf24" fontSize={fontSz} fontFamily="monospace" fontWeight="bold">
                       P{idx + 1}
                     </text>
                   </g>
@@ -382,7 +399,7 @@ export const VideoPlayerCanvas: React.FC<VideoPlayerCanvasProps> = ({
           <span className="legend-line" style={{ background: '#4ade80' }} />
           <span>Auto-Learned Trajectory Flow</span>
         </div>
-        <div className="canvas-resolution">3840×2160 UHD · Native Coordinate Mapping</div>
+        <div className="canvas-resolution">{vw}×{vh} · Native Coordinate Mapping</div>
       </div>
     </section>
   )

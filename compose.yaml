@@ -12,6 +12,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app/backend
       - ./data:/app/data
       - ./configs:/app/configs
       - ./models:/app/models

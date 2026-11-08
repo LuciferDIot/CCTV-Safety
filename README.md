@@ -62,10 +62,11 @@ CCTV-Safety/
 │   │       ├── tracker.py          # RobustTrackerManager & motorcycle duplicate NMS
 │   │       ├── annotator.py        # Supervision translucent overlays & vehicle badges
 │   │       ├── hud.py              # OpenCV HUD percentage progress bar overlay
-│   │       └── engine.py           # IntersectionSafetyPipeline end-to-end runner
+│   │       ├── remux.py            # H.264 video remuxing helper & Web codec enforcement
+│   │       └── engine.py           # IntersectionSafetyPipeline with dynamic lane adjustment
 │   ├── notebooks/                  # Empirical research & evidence notebook
 │   │   └── cctv_safety_pipeline.ipynb
-│   └── tests/                      # Comprehensive test suite (pytest - 83/83 passing)
+│   └── tests/                      # Comprehensive test suite (pytest - 94/94 passing)
 │       ├── test_safety_rules.py    # Unit tests for kinematics and rules
 │       ├── test_events_export.py   # Machine-readable JSON/CSV export tests
 │       ├── test_backend_api.py     # FastAPI TestClient integration tests
@@ -137,6 +138,27 @@ CCTV-Safety/
 ### 6. Stateless Zero-Disk Pipeline Execution
 * The UI passes active on-screen polygon vertices in-memory inside the HTTP payload (`POST /api/pipeline/start`).
 * The backend executes inference directly in RAM without overwriting server files (`configs/zones.json`), ensuring multi-user isolation and container immutability.
+
+---
+
+
+### 7. Universal H.264 Transcoding & Browser Byte-Range Streaming
+* **The Codec Gap**: Modern browsers (Google Chrome, Microsoft Edge, Safari, Mozilla Firefox) natively support **H.264 (AVC1)** video decoding inside HTML5 `<video>` tags. When OpenCV `cv2.VideoWriter` generates raw MPEG-4 Part 2 (`mp4v` / `FMP4`), Chrome and Edge reject hardware decoding, resulting in playback errors or frozen initial frames.
+* **Transcoding & Faststart**:
+  - The pipeline automatically transcodes rendered clips using `ffmpeg -c:v libx264 -pix_fmt yuv420p -movflags +faststart`.
+  - The `+faststart` flag relocates the MP4 `moov` atom (metadata header) to byte 0 of the container, enabling instant playback initiation without downloading the full multi-megabyte video file.
+  - Video uploads (`.mp4`, `.avi`, `.mov`) are automatically checked and converted to standard H.264 upon ingestion.
+* **HTTP 206 Partial Content Streaming**:
+  - The FastAPI streaming endpoint implements standard RFC 7233 byte-range serving (`Accept-Ranges: bytes`, `Content-Range: bytes START-END/TOTAL`).
+  - Correctly parses suffix range headers (`Range: bytes=-500000`) used by Google Chrome to probe file tail metadata, and handles instantaneous timeline scrubbing without buffering stalls.
+
+### 8. Continuous Trajectory-Based Lane Adaptation
+* **Adaptive Clustering vs. Premature Locking**: Rather than freezing directional lane corridors after the first few warmup frames (which would misclassify bidirectional streets as one-way roads if initial traffic was unaligned), `LaneAutoDetector` dynamically updates every 20 frames as vehicle tracks accumulate.
+* **Spatial Proximity Boundary Resolution**: If a vehicle's ground-contact contact point lies on a dividing seam or slightly outside a polygon boundary, it is matched against candidate lanes via signed Euclidean contour distance (`cv2.pointPolygonTest(..., measureDist=True)`), assigning the true closest lane rather than defaulting to Lane 0.
+
+### 9. Multimodal Spatial Containment & Vehicle Occupant Filtering
+* **Vehicle Occupant Suppression**: Passengers and drivers sitting inside 3-wheel auto-rickshaws, jeepneys, buses, and passenger cars are detected by YOLO as persons. The multimodal fusion layer calculates 2D Intersection-over-Area (`IoA >= 0.50`) against enclosing vehicle boxes, suppressing occupants from false `PEDESTRIAN_IN_LANE` alerts.
+* **High-Angle Rider-to-Bike Fusion**: Bounding boxes of mounted riders in high-resolution 4K CCTV are fused with their motorcycle chassis via spatial containment (`IoA >= 0.25`), and non-walking road users traveling at vehicular speeds are automatically categorized as two-wheelers up to aspect ratio 2.50.
 
 ---
 

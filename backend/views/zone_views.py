@@ -31,7 +31,7 @@ class LaneZoneConfig(BaseModel):
 
 class IntersectionZonesConfig(BaseModel):
     camera_id: str = "cam_01"
-    video_file: str = "intersection_01.mp4"
+    video_file: str = ""
     fps: float = 30.0
     perspective_scale_by_y: Optional[PerspectiveScale] = None
     road: RoadZoneConfig

@@ -25,20 +25,27 @@ def test_pipeline_service_error_and_querying():
 
 def test_pipeline_service_mock_capture_failure():
     """Verifies pipeline terminates cleanly when cv2.VideoCapture read fails on frame 0."""
-    ps = PipelineService(Settings())
+    settings = Settings()
+    dummy = settings.resolve("data/uploads") / "mock_cap_fail_temp.mp4"
+    dummy.write_bytes(b"temp_video_bytes")
+    ps = PipelineService(settings)
     class MockCap:
         def __init__(self, *a, **kw): pass
         def get(self, prop): return 100 if prop == cv2.CAP_PROP_FRAME_COUNT else 30.0
         def read(self): return False, None
         def release(self): pass
 
-    with mock.patch("cv2.VideoCapture", MockCap):
-        tid = ps.start_job(PipelineRunRequest(video_name="intersection_01.mp4", max_frames=10))
-        for _ in range(25):
-            st = ps.get_task_status(tid)
-            if st.status in ("completed", "failed"): break
-            time.sleep(0.1)
-        assert st.status == "completed" and st.current_frame == 0
+    try:
+        with mock.patch("cv2.VideoCapture", MockCap):
+            tid = ps.start_job(PipelineRunRequest(video_name="mock_cap_fail_temp.mp4", max_frames=10))
+            for _ in range(25):
+                st = ps.get_task_status(tid)
+                if st.status in ("completed", "failed"): break
+                time.sleep(0.1)
+            assert st.status == "completed" and st.current_frame == 0
+    finally:
+        dummy.unlink(missing_ok=True)
+        (settings.resolve("data/output") / "mock_cap_fail_temp_annotated.mp4").unlink(missing_ok=True)
 
 
 @pytest.mark.parametrize("eid,ft,expect_400", [
