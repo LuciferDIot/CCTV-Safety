@@ -17,6 +17,7 @@ def _match_rider_to_bike(person_box: np.ndarray, bike_indices: np.ndarray, detec
     """Fuse vertically stacked person onto detected motorcycle chassis."""
     person_center_x = (person_box[0] + person_box[2]) / 2.0
     person_width = person_box[2] - person_box[0]
+    p_area = max(1.0, person_width * (person_box[3] - person_box[1]))
 
     for bike_idx in bike_indices:
         bike_box = detections.xyxy[bike_idx]
@@ -24,11 +25,14 @@ def _match_rider_to_bike(person_box: np.ndarray, bike_indices: np.ndarray, detec
         bike_width = bike_box[2] - bike_box[0]
 
         center_offset_x = abs(person_center_x - bike_center_x)
-        # Vertical stacking: rider's lower body near bike top, torso above bike
         vertical_overlap = (person_box[3] >= bike_box[1] - 50.0 and person_box[1] <= bike_box[3])
         horizontal_aligned = center_offset_x <= max(75.0, 0.75 * max(person_width, bike_width))
 
-        if horizontal_aligned and vertical_overlap:
+        ix = max(0.0, min(person_box[2], bike_box[2]) - max(person_box[0], bike_box[0]))
+        iy = max(0.0, min(person_box[3], bike_box[3]) - max(person_box[1], bike_box[1]))
+        ioa = (ix * iy) / p_area
+
+        if (horizontal_aligned and vertical_overlap) or (ioa >= 0.25 and center_offset_x <= max(100.0, bike_width)):
             detections.xyxy[bike_idx][0] = min(detections.xyxy[bike_idx][0], person_box[0])
             detections.xyxy[bike_idx][1] = min(detections.xyxy[bike_idx][1], person_box[1])
             detections.xyxy[bike_idx][2] = max(detections.xyxy[bike_idx][2], person_box[2])
@@ -59,6 +63,7 @@ def resolve_riders_and_pedestrians(
 
     person_indices = np.where(detections.class_id == 0)[0]
     bike_indices = np.where(np.isin(detections.class_id, [1, 3]))[0]
+    veh_indices = np.where(np.isin(detections.class_id, [2, 5, 7]))[0]
     suppress_indices = []
 
     for person_idx in person_indices:
@@ -67,21 +72,22 @@ def resolve_riders_and_pedestrians(
             suppress_indices.append(person_idx)
             continue
 
+        p_area = max(1.0, (person_box[2] - person_box[0]) * (person_box[3] - person_box[1]))
+        if any((max(0.0, min(person_box[2], vb[2]) - max(person_box[0], vb[0])) * max(0.0, min(person_box[3], vb[3]) - max(person_box[1], vb[1]))) / p_area >= 0.50 for vb in detections.xyxy[veh_indices]):
+            suppress_indices.append(person_idx); continue
+
         person_center_x = (person_box[0] + person_box[2]) / 2.0
-        person_width = person_box[2] - person_box[0]
-        person_height = person_box[3] - person_box[1]
+        person_width, person_height = person_box[2] - person_box[0], person_box[3] - person_box[1]
 
-        # Pedestrians safely on crosswalks are not reclassified
         in_crosswalk = any(point_to_polygon_dist((person_center_x, person_box[3]), z.polygon) >= -10 for z in crosswalk_zones)
-        if in_crosswalk:
-            continue
+        if in_crosswalk: continue
 
-        # In vehicle traffic lanes, reclassify squat non-walking shapes to motorcycles (class 3)
         in_traffic_lane = any(point_to_polygon_dist((person_center_x, person_box[3]), z.polygon) >= -10 for z in lane_zones)
         if in_traffic_lane:
             aspect_ratio = person_height / max(1.0, person_width)
             tracker_id = detections.tracker_id[person_idx] if detections.tracker_id is not None else None
-            if aspect_ratio < 1.80 and not _is_walking_ped(tracker_id, track_history):
+            is_walking = _is_walking_ped(tracker_id, track_history)
+            if (aspect_ratio < 1.80 and not is_walking) or (aspect_ratio < 2.50 and not is_walking and tracker_id in (track_history or {})):
                 detections.class_id[person_idx] = 3
 
     keep_mask = np.ones(len(detections), dtype=bool)
