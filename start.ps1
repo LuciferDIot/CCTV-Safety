@@ -13,7 +13,7 @@ $frontendDir = Join-Path $PSScriptRoot "frontend"
 
 # 1. Start FastAPI Backend
 Write-Host "[1/2] Starting FastAPI Backend on http://localhost:8000..." -ForegroundColor Green
-$backendProc = Start-Process -FilePath $pythonExe -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload" -PassThru
+$backendProc = Start-Process -FilePath $pythonExe -ArgumentList "-m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload" -PassThru
 
 # 2. Wait for Backend Health
 Start-Sleep -Seconds 2

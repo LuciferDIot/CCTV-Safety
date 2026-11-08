@@ -1,0 +1,45 @@
+# AURA-Traffic CCTV Analyzer - Docker Compose Configuration
+# Starts both Backend and Frontend via: docker compose up --build
+# UI accessible at: http://localhost:8080 (and http://localhost:3000)
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: cctv_safety_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+      - ./models:/app/models
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - CORS_ORIGINS=["http://localhost:8080", "http://localhost:3000", "*"]
+    # Optional GPU Acceleration (uncomment if NVIDIA Container Toolkit is installed):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: cctv_safety_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - PORT=3000
+
