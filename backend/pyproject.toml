@@ -2,7 +2,6 @@
 name = "cctv-safety-backend"
 version = "0.1.0"
 description = "AURA-Traffic: CCTV Motorcycle Wrong-Way & Crosswalk Safety Analyzer Backend"
-readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.0",

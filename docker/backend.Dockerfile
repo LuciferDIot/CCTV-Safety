@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir uv
 
 # Copy backend package specification
 COPY backend/pyproject.toml /app/backend/pyproject.toml
-RUN cd /app/backend && uv pip install --system -e .
+RUN cd /app/backend && uv pip install --system -r pyproject.toml
 
 # Copy application code and shared runtime assets
 COPY backend/ /app/backend/
