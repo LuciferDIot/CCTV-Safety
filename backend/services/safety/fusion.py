@@ -29,7 +29,6 @@ def _match_rider_to_bike(person_box: np.ndarray, bike_indices: np.ndarray, detec
         horizontal_aligned = center_offset_x <= max(75.0, 0.75 * max(person_width, bike_width))
 
         if horizontal_aligned and vertical_overlap:
-            # Envelop rider and motorcycle chassis into a single combined bounding box
             detections.xyxy[bike_idx][0] = min(detections.xyxy[bike_idx][0], person_box[0])
             detections.xyxy[bike_idx][1] = min(detections.xyxy[bike_idx][1], person_box[1])
             detections.xyxy[bike_idx][2] = max(detections.xyxy[bike_idx][2], person_box[2])

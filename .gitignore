@@ -60,6 +60,7 @@ models/*.pt
 
 # Generated outputs
 data/output/
+data/uploads/
 
 # OS generated files
 .DS_Store

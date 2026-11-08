@@ -114,8 +114,8 @@ export function normalizeTrafficEvent(raw: any): TrafficEvent {
   const rawTrackIds: number[] = Array.isArray(raw.track_ids)
     ? raw.track_ids.map((id: any) => Number(id))
     : rawTrackId != null
-    ? [Number(rawTrackId)]
-    : []
+      ? [Number(rawTrackId)]
+      : []
   const trackingId = rawTrackId != null ? Number(rawTrackId) : (rawTrackIds[0] ?? 0)
 
   // Timestamps & aliases
@@ -277,8 +277,13 @@ export async function uploadVideo(file: File): Promise<{ message: string; filena
   return res.json()
 }
 
-export async function fetchZones(): Promise<IntersectionZonesConfig> {
-  const res = await fetch(`${API_BASE}/config/zones`)
+export async function fetchZones(videoFile?: string, width?: number, height?: number): Promise<IntersectionZonesConfig> {
+  const params = new URLSearchParams()
+  if (videoFile) params.set('video_file', videoFile)
+  if (width) params.set('width', String(width))
+  if (height) params.set('height', String(height))
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  const res = await fetch(`${API_BASE}/config/zones${qs}`)
   if (!res.ok) throw new Error(`Failed to load zones: ${res.statusText}`)
   return res.json()
 }
@@ -293,15 +298,23 @@ export async function saveZones(config: IntersectionZonesConfig): Promise<Inters
   return res.json()
 }
 
-export async function resetZones(): Promise<IntersectionZonesConfig> {
-  const res = await fetch(`${API_BASE}/config/zones/reset`, { method: 'POST' })
+export async function resetZones(videoFile?: string, width?: number, height?: number): Promise<IntersectionZonesConfig> {
+  const params = new URLSearchParams()
+  if (videoFile) params.set('video_file', videoFile)
+  if (width) params.set('width', String(width))
+  if (height) params.set('height', String(height))
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  const res = await fetch(`${API_BASE}/config/zones/reset${qs}`, { method: 'POST' })
   if (!res.ok) throw new Error(`Failed to reset zones: ${res.statusText}`)
   return res.json()
 }
 
-export async function fetchEvents(status?: string): Promise<TrafficEvent[]> {
-  const url = status && status !== 'All events' ? `${API_BASE}/events?status=${encodeURIComponent(status)}` : `${API_BASE}/events`
-  const res = await fetch(url)
+export async function fetchEvents(status?: string, videoName?: string): Promise<TrafficEvent[]> {
+  const params = new URLSearchParams()
+  if (status && status !== 'All events') params.set('status', status)
+  if (videoName) params.set('video_name', videoName)
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  const res = await fetch(`${API_BASE}/events${qs}`)
   if (!res.ok) throw new Error(`Failed to load events: ${res.statusText}`)
   const data = await res.json()
   if (Array.isArray(data)) {
@@ -349,8 +362,9 @@ export async function cancelPipelineJob(taskId: string): Promise<PipelineStatusR
   return res.json()
 }
 
-export function getExportUrl(format: 'json' | 'csv'): string {
-  return `${API_BASE}/events/export/${format}`
+export function getExportUrl(format: 'json' | 'csv', videoName?: string): string {
+  const qs = videoName ? `?video_name=${encodeURIComponent(videoName)}` : ''
+  return `${API_BASE}/events/export/${format}${qs}`
 }
 
 export function getVideoStreamUrl(videoName: string): string {

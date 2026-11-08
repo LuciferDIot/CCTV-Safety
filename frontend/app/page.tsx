@@ -73,41 +73,64 @@ export default function DashboardPage() {
     setIsMounted(true)
   }, [])
 
-  const baseVideoStem = selectedVideo ? selectedVideo.replace('_annotated.mp4', '').replace('.mp4', '') : ''
-  const annotatedVideoName = baseVideoStem ? `${baseVideoStem}_annotated.mp4` : ''
-  const annotatedVideoExists = Boolean(annotatedVideoName && videos.some((v) => v.name === annotatedVideoName))
-  const currentStreamFile = videoViewMode === 'analyzed' && annotatedVideoExists ? annotatedVideoName : selectedVideo
+  const baseVideoStem = selectedVideo ? selectedVideo.replace(/\.[^/.]+$/, '').replace(/^annotated_/, '').replace(/_annotated$/, '') : ''
+  const isTaskAnnotated = Boolean(
+    activeTask?.status === 'completed' &&
+    activeTask?.output_video &&
+    (activeTask.output_video.startsWith(baseVideoStem) || activeTask.output_video.includes(baseVideoStem))
+  )
+  const matchedAnnotated = (isTaskAnnotated && activeTask?.output_video)
+    ? activeTask.output_video
+    : (videos.find((v) => v.name === `${baseVideoStem}_annotated.mp4` || v.name === `annotated_${baseVideoStem}.mp4`)?.name || `${baseVideoStem}_annotated.mp4`)
+  const annotatedVideoExists = Boolean(
+    baseVideoStem && (
+      isTaskAnnotated ||
+      videos.some((v) => v.name === `${baseVideoStem}_annotated.mp4` || v.name === `annotated_${baseVideoStem}.mp4`)
+    )
+  )
+  const currentStreamFile = videoViewMode === 'analyzed' && annotatedVideoExists ? matchedAnnotated : selectedVideo
   const crosswalkEnabled = Boolean(zones && zones.crosswalks && zones.crosswalks.length > 0)
   const isRendering = activeTask?.status === 'running'
 
+  const currentVideoMeta = useMemo(() => {
+    return videos.find((v) => v.name === selectedVideo)
+  }, [videos, selectedVideo])
+  const maxZoneX = zones?.road?.polygon ? Math.max(...zones.road.polygon.map((p) => p[0]), 0) : 0
+  const maxZoneY = zones?.road?.polygon ? Math.max(...zones.road.polygon.map((p) => p[1]), 0) : 0
+  const videoWidth = currentVideoMeta?.width || (maxZoneX > 1920 ? 3840 : 1920)
+  const videoHeight = currentVideoMeta?.height || (maxZoneY > 1080 ? 2160 : 1080)
+
   useEffect(() => {
-    fetchVideos().then(setVideos).catch(console.error)
-    fetchZones()
-      .then((z) => {
-        setZones(z)
-        if (z.crosswalks && z.crosswalks.length > 0) setLastCrosswalk(z.crosswalks[0])
-      })
-      .catch(console.error)
+    fetchVideos().then((vids) => {
+      setVideos(vids)
+    }).catch(console.error)
     fetchHealth().then(setHealth).catch(console.error)
   }, [])
 
   useEffect(() => {
-    const loadTelem = () => fetchTelemetry().then(setTelemetry).catch(() => {})
+    const loadTelem = () => fetchTelemetry().then(setTelemetry).catch(() => { })
     loadTelem()
     const interval = setInterval(loadTelem, 2500)
     return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
-    fetchEvents(filter)
+    if (!selectedVideo) {
+      setEvents([])
+      setSelectedEventId('')
+      return
+    }
+    fetchEvents(filter, selectedVideo)
       .then((data) => {
         setEvents(data)
         if (data.length > 0 && !data.some((e) => e.event_id === selectedEventId)) {
           setSelectedEventId(data[0].event_id)
+        } else if (data.length === 0) {
+          setSelectedEventId('')
         }
       })
       .catch(console.error)
-  }, [filter])
+  }, [filter, selectedVideo])
 
   useEffect(() => {
     return () => {
@@ -161,46 +184,70 @@ export default function DashboardPage() {
     }
   }
 
-  const handleSelectVideo = async (videoName: string) => {
+  const createDefaultZonesForVideo = (videoName: string, w: number, h: number, fps: number = 30.0): IntersectionZonesConfig => {
+    return {
+      camera_id: `cam_${videoName.replace(/\.[^/.]+$/, '')}`,
+      video_file: videoName,
+      fps: fps,
+      perspective_scale_by_y: { y_top: 0.1, y_bottom: 1.0, weight_top: 0.35, weight_bottom: 1.0 },
+      road: {
+        id: 'road',
+        polygon: [
+          [Math.round(0.18 * w), Math.round(0.15 * h)],
+          [Math.round(0.82 * w), Math.round(0.15 * h)],
+          [Math.round(0.88 * w), Math.round(0.85 * h)],
+          [Math.round(0.12 * w), Math.round(0.85 * h)],
+        ],
+        warmup_frames: 40,
+      },
+      crosswalks: [
+        {
+          id: 'crosswalk_zone',
+          polygon: [
+            [Math.round(0.75 * w), Math.round(0.35 * h)],
+            [Math.round(0.25 * w), Math.round(0.35 * h)],
+            [Math.round(0.25 * w), Math.round(0.55 * h)],
+            [Math.round(0.75 * w), Math.round(0.55 * h)],
+          ],
+        },
+      ],
+      lanes: [],
+    }
+  }
+
+  const handleSelectVideo = async (videoName: string, metaParam?: VideoMetadata) => {
     setIsPlaying(false)
     setSelectedVideo(videoName)
+    setActiveTask(null)
     setVideoViewMode('raw')
-    setMode('view')
+    setMode('edit')
 
-    if (videoName.includes('intersection_01')) {
-      try {
-        const defaultZones = await resetZones()
-        setZones(defaultZones)
-        if (defaultZones.crosswalks && defaultZones.crosswalks.length > 0) {
-          setLastCrosswalk(defaultZones.crosswalks[0])
+    const meta = metaParam || videos.find((v) => v.name === videoName)
+    const w = meta?.width || 1920
+    const h = meta?.height || 1080
+    const fps = meta?.fps || 30.0
+
+    try {
+      const existing = await fetchZones(videoName, w, h)
+      const existingStem = existing?.video_file ? existing.video_file.replace(/\.[^/.]+$/, '').replace(/^annotated_/, '').replace(/_annotated$/, '') : ''
+      const currentStem = videoName.replace(/\.[^/.]+$/, '').replace(/^annotated_/, '').replace(/_annotated$/, '')
+      if (existing && (existing.video_file === videoName || existingStem === currentStem) && existing.road?.polygon?.length) {
+        setZones(existing)
+        if (existing.crosswalks && existing.crosswalks.length > 0) {
+          setLastCrosswalk(existing.crosswalks[0])
         }
-      } catch {
-        // fallback
+        showToast(`Loaded ${videoName}. Default safety zones calibrated for ${w}x${h}.`)
+        return
       }
-    } else {
-      // For any new or other video (e.g. intersection_02, intersection_03, or uploaded videos):
-      // Road boundary covers general scene; crosswalk is disabled by default (crosswalks: [])
-      // so no phantom crosswalk is displayed where none exists in the scene.
-      setZones({
-        camera_id: `cam_${videoName.replace(/\.[^/.]+$/, '')}`,
-        video_file: videoName,
-        fps: 30.0,
-        perspective_scale_by_y: { y_top: 0.1, y_bottom: 1.0, weight_top: 0.35, weight_bottom: 1.0 },
-        road: {
-          id: 'road',
-          polygon: [
-            [500, 200],
-            [3340, 200],
-            [3840, 2160],
-            [0, 2160],
-          ],
-          warmup_frames: 40,
-        },
-        crosswalks: [],
-        lanes: [],
-      })
+    } catch {}
+
+    const defaultZones = createDefaultZonesForVideo(videoName, w, h, fps)
+    setZones(defaultZones)
+    if (defaultZones.crosswalks && defaultZones.crosswalks.length > 0) {
+      setLastCrosswalk(defaultZones.crosswalks[0])
     }
-    showToast(`Loaded ${videoName}. Ready for safety analysis.`)
+    saveZones(defaultZones).catch(() => {})
+    showToast(`Loaded ${videoName}. Default safety zones calibrated for ${w}x${h}.`)
   }
 
   const processUploadedFile = async (file: File) => {
@@ -211,7 +258,7 @@ export default function DashboardPage() {
       showToast(`Uploaded ${res.filename} successfully`)
       const updated = await fetchVideos()
       setVideos(updated)
-      await handleSelectVideo(res.filename)
+      await handleSelectVideo(res.filename, res.metadata)
     } catch (err: any) {
       showToast(`Upload failed: ${err.message}`)
     } finally {
@@ -225,70 +272,43 @@ export default function DashboardPage() {
     if (file) await processUploadedFile(file)
   }
 
-  const handleLoadSample = () => {
-    handleSelectVideo('intersection_01.mp4')
-  }
-
   const handleToggleCrosswalk = (enabled: boolean) => {
     if (!zones) return
     if (enabled) {
-      const isSample1 = selectedVideo.includes('intersection_01')
-      const defaultPolygon: [number, number][] = isSample1
-        ? [
-            [3022, 351],
-            [1292, 351],
-            [1088, 675],
-            [3304, 672],
-          ]
-        : [
-            [1000, 500],
-            [2800, 500],
-            [2800, 850],
-            [1000, 850],
-          ]
-      const restored = lastCrosswalk && isSample1 ? lastCrosswalk : {
+      const defaultPolygon: [number, number][] = [
+        [Math.round(0.80 * videoWidth), Math.round(0.20 * videoHeight)],
+        [Math.round(0.25 * videoWidth), Math.round(0.20 * videoHeight)],
+        [Math.round(0.20 * videoWidth), Math.round(0.38 * videoHeight)],
+        [Math.round(0.85 * videoWidth), Math.round(0.38 * videoHeight)],
+      ]
+      const restored = lastCrosswalk || {
         id: 'crosswalk_zone',
         polygon: defaultPolygon,
       }
-      setZones({ ...zones, crosswalks: [restored] })
+      const updated = { ...zones, crosswalks: [restored] }
+      setZones(updated)
+      saveZones(updated).catch(() => {})
       showToast('Crosswalk monitoring enabled')
     } else {
       if (zones.crosswalks && zones.crosswalks.length > 0) {
         setLastCrosswalk(zones.crosswalks[0])
       }
-      setZones({ ...zones, crosswalks: [] })
+      const updated = { ...zones, crosswalks: [] }
+      setZones(updated)
+      saveZones(updated).catch(() => {})
       showToast('Crosswalk monitoring disabled')
     }
   }
 
   const handleResetZones = async () => {
+    if (!selectedVideo) return
     try {
-      if (selectedVideo.includes('intersection_01')) {
-        const res = await resetZones()
-        setZones(res)
-        if (res.crosswalks && res.crosswalks.length > 0) setLastCrosswalk(res.crosswalks[0])
-        showToast('Zones restored to default coordinates.')
-      } else {
-        setZones({
-          camera_id: `cam_${selectedVideo.replace(/\.[^/.]+$/, '')}`,
-          video_file: selectedVideo,
-          fps: 30.0,
-          perspective_scale_by_y: { y_top: 0.1, y_bottom: 1.0, weight_top: 0.35, weight_bottom: 1.0 },
-          road: {
-            id: 'road',
-            polygon: [
-              [500, 200],
-              [3340, 200],
-              [3840, 2160],
-              [0, 2160],
-            ],
-            warmup_frames: 40,
-          },
-          crosswalks: [],
-          lanes: [],
-        })
-        showToast('Zones reset to clean corridor layout.')
+      const resetLayout = await resetZones(selectedVideo, videoWidth, videoHeight)
+      setZones(resetLayout)
+      if (resetLayout.crosswalks && resetLayout.crosswalks.length > 0) {
+        setLastCrosswalk(resetLayout.crosswalks[0])
       }
+      showToast(`Zones reset to default coordinates for ${videoWidth}x${videoHeight}.`)
     } catch (err: any) {
       showToast(`Reset failed: ${err.message}`)
     }
@@ -307,6 +327,8 @@ export default function DashboardPage() {
 
   const handleStartRender = async () => {
     if (isRendering || !selectedVideo) return
+    setIsPlaying(false)
+    if (videoRef.current) videoRef.current.pause()
     try {
       const maxFr = renderPreset === 'preview' ? 100 : 0
       const initialTask = await startPipelineJob(selectedVideo, maxFr, zones)
@@ -327,13 +349,19 @@ export default function DashboardPage() {
             setVideos(updatedVideos)
             setVideoViewMode('analyzed')
             setMode('view')
-            const updatedEvents = await fetchEvents(filter)
+            if (videoRef.current) {
+              videoRef.current.load()
+            }
+            const updatedEvents = await fetchEvents(filter, selectedVideo)
             setEvents(updatedEvents)
-            setTimeout(() => {
-              if (updatedEvents.length > 0 && updatedEvents[0].time_start != null) {
-                jumpToTime(updatedEvents[0].time_start)
-              }
-            }, 600)
+            if (updatedEvents.length > 0) {
+              setSelectedEventId(updatedEvents[0].event_id)
+              setTimeout(() => {
+                if (updatedEvents[0].time_start != null) {
+                  jumpToTime(updatedEvents[0].time_start)
+                }
+              }, 600)
+            }
           } else if (status.status === 'failed' || status.status === 'cancelled') {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
             showToast(`Rendering ${status.status}: ${status.error || ''}`)
@@ -369,10 +397,10 @@ export default function DashboardPage() {
     if (!draggingVertex || !zones) return
     const svg = e.currentTarget
     const rect = svg.getBoundingClientRect()
-    const x = Math.round(((e.clientX - rect.left) / rect.width) * 3840)
-    const y = Math.round(((e.clientY - rect.top) / rect.height) * 2160)
-    const clampedX = Math.max(0, Math.min(3840, x))
-    const clampedY = Math.max(0, Math.min(2160, y))
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * videoWidth)
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * videoHeight)
+    const clampedX = Math.max(0, Math.min(videoWidth, x))
+    const clampedY = Math.max(0, Math.min(videoHeight, y))
 
     if (draggingVertex.zone === 'road' && zones.road?.polygon) {
       const updatedRoad = { ...zones.road }
@@ -455,6 +483,7 @@ export default function DashboardPage() {
           currentTime={currentTime}
           duration={duration}
           videoRef={videoRef}
+          onSetMode={setMode}
           onSetVideoViewMode={setVideoViewMode}
           onSetActiveZoneTab={setActiveZoneTab}
           onToggleCrosswalk={handleToggleCrosswalk}
@@ -485,13 +514,14 @@ export default function DashboardPage() {
             }
           }}
           availableVideos={videos}
+          videoWidth={videoWidth}
+          videoHeight={videoHeight}
           onSelectVideo={handleSelectVideo}
           onUploadClick={() => fileInputRef.current?.click()}
-          onLoadSample={handleLoadSample}
         />
       }
       evidenceDrawer={
-        drawerOpen ? (
+        drawerOpen && selectedEvent ? (
           <EvidenceDrawer
             selectedEvent={selectedEvent}
             imgErrors={imgErrors}
@@ -513,12 +543,12 @@ export default function DashboardPage() {
               }
             }}
           />
-        ) : (
+        ) : selectedEvent ? (
           <ReopenDrawerButton
             eventId={selectedEvent?.event_id}
             onClick={() => setDrawerOpen(true)}
           />
-        )
+        ) : undefined
       }
       sidebar={
         <EventsSidebar
@@ -533,8 +563,10 @@ export default function DashboardPage() {
           }}
           onFilterChange={setFilter}
           onRefresh={() => {
-            fetchEvents(filter).then(setEvents).catch(console.error)
-            showToast('Refreshed event feed.')
+            if (selectedVideo) {
+              fetchEvents(filter, selectedVideo).then(setEvents).catch(console.error)
+              showToast('Refreshed event feed.')
+            }
           }}
         />
       }
