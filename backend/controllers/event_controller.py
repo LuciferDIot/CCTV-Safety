@@ -14,21 +14,28 @@ def list_events(
     status: Optional[str] = Query(None, description="Filter: CONFIRMED, EXEMPT, INSUFFICIENT_EVIDENCE, IGNORED"),
     event_type: Optional[str] = Query(None, description="Filter: WRONG_WAY, CROSSWALK_RIDING, WALKING_MOTORCYCLE, etc."),
     track_id: Optional[int] = Query(None, description="Filter by motorcycle tracking ID"),
-    include_demo: bool = Query(True, description="Include demo events"),
+    video_name: Optional[str] = Query(None, description="Filter by video name"),
+    include_demo: bool = Query(False, description="Include demo events"),
     svc: EventService = Depends(get_event_service)
 ):
-    return svc.get_events(status=status, event_type=event_type, track_id=track_id, include_demo=include_demo)
+    return svc.get_events(status=status, event_type=event_type, track_id=track_id, include_demo=include_demo, video_name=video_name)
 
 
 @router.get("/export/csv")
-def export_csv(svc: EventService = Depends(get_event_service)):
-    csv_data = svc.export_csv()
+def export_csv(
+    video_name: Optional[str] = Query(None, description="Filter export by video name"),
+    svc: EventService = Depends(get_event_service)
+):
+    csv_data = svc.export_csv(include_demo=False, video_name=video_name)
     return Response(content=csv_data, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=detected_events.csv"})
 
 
 @router.get("/export/json", response_model=List[TrafficEvent])
-def export_json(svc: EventService = Depends(get_event_service)):
-    return svc.get_events()
+def export_json(
+    video_name: Optional[str] = Query(None, description="Filter export by video name"),
+    svc: EventService = Depends(get_event_service)
+):
+    return svc.get_events(include_demo=False, video_name=video_name)
 
 
 @router.get("/{event_id}", response_model=TrafficEvent)

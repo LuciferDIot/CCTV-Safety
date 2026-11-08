@@ -120,7 +120,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </Button>
             </div>
 
-            <ExportButtonGroup />
+            <ExportButtonGroup selectedVideo={selectedVideo} />
           </>
         ) : (
           <Button

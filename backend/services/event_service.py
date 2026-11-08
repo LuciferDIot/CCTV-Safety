@@ -15,17 +15,25 @@ class EventService:
         self.evidence_dir = settings.resolve(settings.evidence_cards_dir)
         self.output_dir = settings.resolve(settings.output_dir)
 
-    def get_events(self, status: Optional[str] = None, event_type: Optional[str] = None, track_id: Optional[int] = None, include_demo: bool = True) -> List[TrafficEvent]:
+    def get_events(self, status: Optional[str] = None, event_type: Optional[str] = None, track_id: Optional[int] = None, include_demo: bool = False, video_name: Optional[str] = None) -> List[TrafficEvent]:
         events: List[TrafficEvent] = []
-        json_file = self.output_dir / "detected_events.json"
-        if json_file.exists():
+        stem = Path(video_name).stem.replace("_annotated", "").replace("annotated_", "") if video_name else None
+        v_file = (self.output_dir / f"events_{stem}.json") if stem else None
+        if v_file and v_file.exists():
             try:
-                with open(json_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    events.extend([self._to_schema(item) for item in data.get("events", [])])
+                data = json.loads(v_file.read_text(encoding="utf-8"))
+                events.extend([self._to_schema(item) for item in data.get("events", [])])
             except (json.JSONDecodeError, OSError): pass
+        elif not video_name:
+            sources = ([self.output_dir / "detected_events.json"] if (self.output_dir / "detected_events.json").exists() else []) + sorted(self.output_dir.glob("events_*.json"))
+            for src in sources:
+                try:
+                    data = json.loads(src.read_text(encoding="utf-8"))
+                    seen = {e.event_id for e in events}
+                    events.extend([self._to_schema(it) for it in data.get("events", []) if str(it.get("id", it.get("event_id", ""))) not in seen])
+                except (json.JSONDecodeError, OSError): pass
 
-        if include_demo or not events:
+        if include_demo and not video_name:
             existing_ids = {e.event_id for e in events}
             events.extend([TrafficEvent(**d) for d in get_demo_scenarios() if d["event_id"] not in existing_ids])
 
@@ -39,8 +47,8 @@ class EventService:
             if ev.event_id == event_id: return ev
         raise HTTPException(status_code=404, detail=f"Event '{event_id}' not found")
 
-    def export_csv(self, include_demo: bool = True) -> str:
-        events = self.get_events(include_demo=include_demo)
+    def export_csv(self, include_demo: bool = True, video_name: Optional[str] = None) -> str:
+        events = self.get_events(include_demo=include_demo, video_name=video_name)
         output = io.StringIO()
         fieldnames = ["event_id", "status", "event_type", "start_time", "end_time", "duration_seconds", "tracking_id", "confidence", "alignment_dot_product", "posture", "stitched", "natural_language_explanation"]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
