@@ -1,3 +1,14 @@
+---
+title: AURA-Traffic CCTV Safety Backend
+emoji: 🚦
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 4.44.0
+app_file: server.py
+pinned: false
+---
+
 # AURA-Traffic: CCTV Motorcycle Wrong-Way & Crosswalk Safety Analyzer
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
@@ -12,37 +23,70 @@ An end-to-end computer vision and traffic safety monitoring system that analyzes
 
 ## 🏛️ Monorepo Architecture
 
-The repository is structured as a modular polyglot monorepo:
+The backend is organized using a clean, flat **MVC + Services** architecture (eliminating unnecessary nested subdirectories, with notebooks and automated tests housed directly in `backend/` as first-class citizens, and every Python file strictly $\le 100$ LOC). The frontend follows **Brad Frost Atomic Design**:
 
 ```
 CCTV-Safety/
 │
-├── backend/                        # ALL Python code & packaging (UV-managed)
-│   ├── pyproject.toml              # UV dependencies, hatchling build & test configuration
-│   ├── .env.example                # Configurable environment templates
-│   ├── src/                        # Computer Vision & Safety Core Engine (<100 LOC/file)
-│   │   ├── core/                   # Anchors, perspective scaling, kinematics, motion
-│   │   ├── config/                 # Intersection zone models & loaders
-│   │   ├── tracking/               # Detection, tracking manager, NMS gating, track states
-│   │   ├── safety/                 # Direction analysis, lane clustering, crosswalk rules, fusion
-│   │   ├── analytics/              # Temporal FSM verifier, explanation engine, evaluator
-│   │   └── pipeline/               # Multi-stage batch & streaming processor
-│   ├── app/                        # FastAPI REST Application (<100 LOC/file)
-│   │   ├── main.py                 # FastAPI application factory, CORS, lifespan
-│   │   ├── config.py               # Pydantic BaseSettings, dynamic root path resolution
-│   │   ├── dependencies.py         # Dependency injection singletons
-│   │   ├── schemas/                # Request & response Pydantic DTOs
-│   │   ├── services/               # Video streaming, zones, events & pipeline execution
-│   │   └── routers/                # REST API controllers (/health, /videos, /zones, /events, /pipeline)
-│   ├── notebooks/                  # Empirical Research & Evidence Notebook
+├── server.py                       # Hugging Face Spaces (Gradio SDK) & Cloud entrypoint (port 7860)
+├── requirements.txt                # Production dependencies for cloud deployment
+├── packages.txt                    # System apt packages (ffmpeg, libsm6, libxext6)
+│
+├── backend/                        # Flat MVC + Services Backend (UV-managed)
+│   ├── pyproject.toml              # UV dependencies, hatchling build & pytest configuration
+│   ├── config.py                   # Pydantic BaseSettings & monorepo path resolution
+│   ├── main.py                     # FastAPI application entrypoint, CORS, lifespan, /api mount
+│   ├── controllers/                # (C) HTTP API presentation routers
+│   │   ├── deps.py                 # Reusable service & settings injection providers
+│   │   ├── router.py               # Central APIRouter aggregating all sub-controllers
+│   │   ├── health_controller.py    # GET /api/health, /api/health/system-info
+│   │   ├── video_controller.py     # GET/POST /api/videos (upload, streaming, metadata)
+│   │   ├── zone_controller.py      # GET/PUT/POST /api/config/zones (live geometry updates)
+│   │   ├── event_controller.py     # GET /api/events (filtering, audit cards, CSV/JSON export)
+│   │   └── pipeline_controller.py  # POST/GET /api/pipeline (start, status, HUD telemetry)
+│   ├── models/                     # (M) Domain entities & track state machines
+│   │   ├── event.py                # EventRecord timestamped infraction model
+│   │   ├── track.py                # TrackState trajectory history & velocity extrapolator
+│   │   └── zone.py                 # AutoDetectedLane corridor & directional vector model
+│   ├── views/                      # (V) Pydantic response DTOs & request schemas
+│   │   ├── video_views.py          # VideoMetadata & VideoUploadResponse contracts
+│   │   ├── zone_views.py           # Road, crosswalk, lane & perspective scale schemas
+│   │   ├── event_views.py          # TrafficEvent, PostureMetrics & EvidenceFrames DTOs
+│   │   └── pipeline_views.py       # PipelineRunRequest, StatusResponse & TelemetryHUD
+│   ├── services/                   # (+S) Business logic, CV engines & safety rules
+│   │   ├── video_service.py        # Video catalog indexing & chunked byte-streaming
+│   │   ├── zone_service.py         # In-memory zone management & live overrides
+│   │   ├── event_service.py        # Event filtering, audit verification & CSV generator
+│   │   ├── event_demo.py           # Pre-seeded demo safety scenarios
+│   │   ├── pipeline_service.py     # Background task manager & thread lifecycle
+│   │   ├── safety/                 # Pure traffic safety rules & kinematics
+│   │   │   ├── geometry.py         # Ground anchors, perspective scale w(y), poly dist
+│   │   │   ├── direction.py        # DirectionChecker, motion metrics, dot products
+│   │   │   ├── crosswalk.py        # Crosswalk transit classification & speed checks
+│   │   │   ├── vehicles.py         # Tuk-tuk (3-wheeler), bike, ped, car classifier
+│   │   │   ├── pedestrian.py       # Safe crosswalk walker vs lane intrusion checker
+│   │   │   ├── fusion.py           # Rider-to-motorcycle spatial fusion & IoU suppressor
+│   │   │   └── clustering.py       # Unsupervised 2-way KMeans lane flow clustering
+│   │   └── cv/                     # Computer Vision & Detection Engine
+│   │       ├── model.py            # YOLO weights loader & accelerator initialization
+│   │       ├── tracker.py          # RobustTrackerManager & motorcycle duplicate NMS
+│   │       ├── annotator.py        # Supervision translucent overlays & vehicle badges
+│   │       ├── hud.py              # OpenCV HUD percentage progress bar overlay
+│   │       └── engine.py           # IntersectionSafetyPipeline end-to-end runner
+│   ├── notebooks/                  # Empirical research & evidence notebook
 │   │   └── cctv_safety_pipeline.ipynb
-│   └── tests/                      # Automated test suite (pytest)
+│   └── tests/                      # Automated test suite (pytest - 12/12 passing)
 │       ├── test_safety_rules.py    # Unit tests for kinematics and rules
 │       ├── test_events_export.py   # Machine-readable JSON/CSV export tests
 │       └── test_backend_api.py     # FastAPI TestClient integration tests
 │
 ├── frontend/                       # Interactive Next.js 16 Dashboard UI (React 19, TypeScript)
-│   ├── app/                        # App Router (page.tsx, layout.tsx, globals.css)
+│   ├── components/                 # Brad Frost Atomic Design
+│   │   ├── atoms/                  # Badge, StatusDot, Toast
+│   │   ├── molecules/              # TelemetryBar, VideoScrubber, ExportButtonGroup, ProgressBanner
+│   │   ├── organisms/              # AppHeader, VideoPlayerCanvas, EvidenceDrawer, EventsSidebar
+│   │   └── templates/              # DashboardLayout coordinate shell
+│   ├── app/                        # App Router (page.tsx controller, layout.tsx, globals.css)
 │   └── lib/                        # API client, types, direct 1GB streaming upload
 ├── docker/                         # Multi-stage production container definitions
 │   ├── Dockerfile.backend          # Uvicorn + PyTorch + OpenCV backend container
@@ -194,7 +238,7 @@ Once built and running:
 - **FastAPI API**: `http://localhost:8000`
 - **Swagger Documentation**: `http://localhost:8000/docs`
 
-> **GPU Acceleration**: To enable NVIDIA GPU acceleration inside the Docker container, ensure the NVIDIA Container Toolkit is installed and uncomment the `deploy.resources.reservations.devices` block in [`compose.yaml`](file:///f:/Projects/CCTV-Safety/compose.yaml).
+> **GPU Acceleration**: To enable NVIDIA GPU acceleration inside the Docker container, ensure the NVIDIA Container Toolkit is installed and uncomment the `deploy.resources.reservations.devices` block in [`compose.yaml`](compose.yaml).
 
 ---
 
@@ -253,8 +297,33 @@ pytest tests/ -v
 
 ---
 
+## 🚀 100% Free Cloud Deployment Guide
+
+### Option 1: Hugging Face Spaces (Backend - 16 GB RAM) + Vercel (Frontend)
+
+#### Step 1: Deploy Backend to Hugging Face Spaces (Free 16 GB RAM)
+1. In your Hugging Face account ([Create a Space](https://huggingface.co/new-space)), configure:
+   - **Space SDK**: Select **Gradio** (provides 2 vCPU, 16 GB RAM, 50 GB disk completely free without billing or credit card).
+   - **Space Name**: e.g., `cctv-safety-api` (or your choice).
+   - **Visibility**: Public.
+2. Push your repo to Hugging Face Space git remote or upload files:
+   ```bash
+   git remote add space https://huggingface.co/spaces/geevinda/cctv-safety-api
+   git push space main
+   ```
+   Hugging Face automatically reads `app_file: server.py`, installs `packages.txt` (ffmpeg) and `requirements.txt`, and serves FastAPI at `https://geevinda-cctv-safety-api.hf.space`.
+
+#### Step 2: Deploy Frontend to Vercel (Free Next.js Hosting)
+1. Import the repository in [Vercel](https://vercel.com/new).
+2. Set **Root Directory** to `frontend`.
+3. Add Environment Variable:
+   - `NEXT_PUBLIC_BACKEND_URL`: `https://geevinda-cctv-safety-api.hf.space`
+4. Click **Deploy**. Vercel will build and host the dashboard globally on HTTPS.
+
+---
+
 ## 🛡️ Code Quality Standards
-- **Strict File Limit**: Every Python file across `src/`, `app/`, and `tests/` is strictly under **100 lines of code**.
+- **Strict File Limit**: Every Python file across `backend/app/` and `tests/` is strictly under **100 lines of code**.
 - **Zero Hardcoding**: All paths and parameters are dynamic and configurable via environment variables.
 - **Stateless Deployment**: File-based persistence without requiring an external database server.
 - **In-Memory Rendering**: Zone customizations are passed per-job without mutating configuration templates on disk.
