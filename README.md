@@ -80,10 +80,9 @@ CCTV-Safety/
 │   │   └── templates/              # DashboardLayout coordinate shell
 │   ├── app/                        # App Router (page.tsx controller, layout.tsx, globals.css)
 │   └── lib/                        # API client, types, direct 1GB streaming upload
-├── docker/                         # Multi-stage production container definitions
-│   ├── Dockerfile.backend          # Uvicorn + PyTorch + OpenCV backend container
-│   ├── Dockerfile.frontend         # Standalone Next.js 16 container
-│   └── compose.yaml                # Unified dual-container orchestrator
+├── docker/                         # Production container definitions
+│   ├── backend.Dockerfile          # Uvicorn + PyTorch + OpenCV backend container
+│   └── frontend.Dockerfile         # Standalone Next.js 16 container
 │
 ├── configs/                        # Shared runtime configuration
 │   └── zones.json                  # Calibrated intersection road polygon & crosswalk reference template
