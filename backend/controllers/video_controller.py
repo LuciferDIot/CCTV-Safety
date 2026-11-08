@@ -34,6 +34,10 @@ def upload_video(file: UploadFile = File(...), svc: VideoService = Depends(get_v
     dest = svc.uploads_dir / safe_filename
     with open(dest, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+    # Ensure uploaded video is H.264 + faststart for guaranteed browser playback
+    from services.cv.remux import ensure_h264
+    dest = ensure_h264(dest)
+    safe_filename = dest.name
     meta = svc.probe_video(dest)
     size_mb = round(dest.stat().st_size / (1024 * 1024), 2)
     if not meta:

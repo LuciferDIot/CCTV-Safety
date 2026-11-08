@@ -22,7 +22,7 @@ class VideoService:
                         all_files.append(p)
         seen, metas = set(), []
         for p in all_files:
-            if p.name not in seen and not p.name.endswith(".tmp.mp4") and not p.name.endswith(".remux.mp4"):
+            if p.name not in seen and not p.name.endswith((".tmp.mp4", ".remux.mp4")):
                 seen.add(p.name)
                 m = self.probe_video(p)
                 if m: metas.append(m)
@@ -59,6 +59,12 @@ class VideoService:
             if d.exists():
                 m = next((f for f in d.iterdir() if f.is_file() and f.name.lower() == safe_name.lower()), None)
                 if m: return m
+        stem = Path(safe_name).stem.replace("_annotated", "").replace("annotated_", "")
+        for d in [self.output_dir, self.uploads_dir, self.videos_dir]:
+            if d.exists():
+                for alt in [f"{stem}_annotated.mp4", f"annotated_{stem}.mp4", f"{stem}.mp4"]:
+                    p = d / alt
+                    if p.is_file(): return p
         raise HTTPException(status_code=404, detail=f"Video '{name}' not found")
 
     def parse_byte_range(self, range_header: Optional[str], file_size: int) -> Tuple[int, int]:
@@ -69,6 +75,9 @@ class VideoService:
             return (0, file_size - 1)
         parts = r_val.split("-")
         try:
+            # Suffix range: bytes=-N means last N bytes (Chrome uses this to find moov atom)
+            if not parts[0] and len(parts) > 1 and parts[1]:
+                return (max(0, file_size - int(parts[1])), file_size - 1)
             start = int(parts[0]) if parts[0] else 0
             end = int(parts[1]) if len(parts) > 1 and parts[1] else min(start + 1024 * 1024 * 2 - 1, file_size - 1)
             if start < 0 or start >= file_size or end < start:
